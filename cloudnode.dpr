@@ -12,7 +12,8 @@ uses
   Cloud.Types in 'Cloud.Types.pas',
   Cloud.Consts in 'Cloud.Consts.pas',
   Cloud.Client in 'Cloud.Client.pas',
-  Cloud.Console in 'Cloud.Console.pas';
+  Cloud.Console in 'Cloud.Console.pas',
+  Cloud.Utils in 'Cloud.Utils.pas';
 
 { $DEFINE CLOUD}
 
@@ -43,6 +44,8 @@ begin {main}
   repeat
 
     while Client.Workloaded do CheckSynchronize(100);
+
+    while CheckSynchronize(100) do;
 
     if not Client.Connected then Break;
 

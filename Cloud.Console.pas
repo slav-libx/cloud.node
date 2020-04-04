@@ -6,6 +6,7 @@ uses
   System.SysUtils,
   Cloud.Consts,
   Cloud.Types,
+  Cloud.Utils,
   Cloud.Client;
 
 type
@@ -21,6 +22,9 @@ type
     procedure OnAddresses(const Addresses: TCloudResponseGetAddresses); override;
     procedure OnCreateAddress(const Address: TCloudResponseCreateAddress); override;
     procedure OnTransactions(const Transactions: TCloudResponseTransactions); override;
+    procedure OnAddress(const Address: TCloudResponseCurrentAddresses); override;
+    procedure OnInfo(const Info: TCloudResponseInfo); override;
+    procedure OnSendTo(const SendTo: TCloudResponseSendTo); override;
   public
     constructor Create(CloudClient: TCloudClient);
     function DoConsoleCommand(const Command: string): Boolean;
@@ -86,26 +90,58 @@ begin
   for var Transaction in Transactions.Transactions do Writeln(string(Transaction));
 end;
 
+procedure TCloudConsole.OnAddress(const Address: TCloudResponseCurrentAddresses);
+begin
+  Writeln(string(Address));
+end;
+
+procedure TCloudConsole.OnInfo(const Info: TCloudResponseInfo);
+begin
+  Writeln(string(Info));
+end;
+
+procedure TCloudConsole.OnSendTo(const SendTo: TCloudResponseSendTo);
+begin
+  Writeln(string(SendTo));
+end;
+
 procedure TCloudConsole.DoPrintHelp(const Title: string);
 begin
   Writeln(Title);
-  Writeln('reg <email> <password>');
-  Writeln('login <email> <password>');
-  Writeln('add <port>');
-  Writeln('list <port>');
-  Writeln('tx <port>');
+  Writeln('reg <email> <password> // registration account');
+  Writeln('login <email> <password> // login account');
+  Writeln('add <b|l|e> // add new address');
+  Writeln('list <b|l|e> // get addresses list');
+  Writeln('tx <b|l|e> // get transactions list');
+  Writeln('get // get current addresses list');
+  Writeln('info <b|l|e> // get current wallet info');
+  Writeln('send <b|l|e> <address> <amount> // get current wallet info');
   Writeln('exit');
+end;
+
+function GetPort(const Port: string): string;
+begin
+  Result:=Port;
+  if Result='' then Exit(PORT_BITCOIN);
+  if Result='b' then Exit(PORT_BITCOIN);
+  if Result='l' then Exit(PORT_LIGHTCOIN);
+  if Result='e' then Exit(PORT_ETHEREUM);
 end;
 
 function TCloudConsole.DoConsoleCommand(const Command: string): Boolean;
 var Args: TArray<string>;
 begin
 
-  if Command='exit' then Exit(False);
-
   Result:=True;
 
   Args:=Command.Split([' '])+['','',''];
+
+  if Args[0]='' then
+  else
+
+  if Command='exit' then
+    Exit(False)
+  else
 
   if Args[0]='reg' then
     CloudClient.SendRequestRegistration(Args[1],Args[2])
@@ -116,15 +152,27 @@ begin
   else
 
   if Args[0]='add' then
-    CloudClient.SendRequestCreateAddress(Args[1])
+    CloudClient.SendRequestCreateAddress(GetPort(Args[1]))
   else
 
   if Args[0]='list' then
-    CloudClient.SendRequestAddresses(Args[1])
+    CloudClient.SendRequestAddresses(GetPort(Args[1]))
   else
 
   if Args[0]='tx' then
-    CloudClient.SendRequestTransactions(Args[1])
+    CloudClient.SendRequestTransactions(GetPort(Args[1]))
+  else
+
+  if Args[0]='get' then
+    CloudClient.SendRequestAddress()
+  else
+
+  if Args[0]='info' then
+    CloudClient.SendRequestInfo(GetPort(Args[1]))
+  else
+
+  if Args[0]='send' then
+    CloudClient.SendRequestSendTo(Args[2],StrToAmount(Args[3]),6,GetPort(Args[1]))
   else
 
     DoPrintHelp('unknown command, use:');

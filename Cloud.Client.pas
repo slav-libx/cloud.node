@@ -9,7 +9,8 @@ uses
   System.DateUtils,
   Net.Socket,
   Cloud.Consts,
-  Cloud.Types;
+  Cloud.Types,
+  Cloud.Utils;
 
 type
   TCloudClient = class
@@ -42,8 +43,13 @@ type
     procedure SendRequestAddresses(const Port: string);
     procedure SendRequestTransactions(const Port: string);
     procedure SendRequestCreateAddress(const Port: string);
+    procedure SendRequestAddress();
+    procedure SendRequestInfo(const Port: string);
+    procedure SendRequestSendTo(const Address: string; Amount: Extended;
+      Confirm: Integer; const Port: string);
     property Workloaded: Boolean read Workload;
     property Connected: Boolean read GetConnected;
+    property ConnectID: string read ConnectionID;
   end;
 
 implementation
@@ -96,6 +102,7 @@ end;
 procedure TCloudClient.OnClientClose(Sender: TObject);
 begin
   Delegate.OnEvent(EVENT_DISCONNECTED,'connection closed');
+  ConnectionID:='';
 end;
 
 procedure TCloudClient.OnClientConnect(Sender: TObject);
@@ -110,19 +117,26 @@ begin
 end;
 
 procedure TCloudClient.OnClientRead(Sender: TObject);
+var
+  P: Integer;
+  Command: string;
 begin
 
   ReceiveString:=ReceiveString+Client.ReceiveString;
 
-  if ReceiveString.EndsWith(#13#10) then
+  P:=ReceiveString.IndexOfAny([#10,#13]);
+
+  Workload:=not ReceiveString.EndsWith(#10);
+
+  while P<>-1 do
   begin
 
-    Workload:=False;
+    Command:=ReceiveString.Substring(0,P);
+    ReceiveString:=ReceiveString.Substring(P+1);
 
-    for var Command in ReceiveString.Split([#13,#10]) do
     if not Command.Trim.IsEmpty then DoResponse(Command);
 
-    ReceiveString:='';
+    P:=ReceiveString.IndexOfAny([#10,#13]);
 
   end;
 
@@ -180,6 +194,19 @@ begin
 
   if Response.Command='listtransactions' then
     Delegate.OnTransactions(Response)
+  else
+
+  if Response.Command='_GetCurAddresses' then
+    Delegate.OnAddress(Response)
+  else
+
+  if Response.Command='GetWaletFullInfo' then
+    Delegate.OnInfo(Response)
+  else
+
+  if Response.Command='SendFrom' then
+    Delegate.OnSendTo(Response)
+  else
 
 end;
 
@@ -215,6 +242,23 @@ end;
 procedure TCloudClient.SendRequestCreateAddress(const Port: string);
 begin
   SendRequest('CreateNewAdres',AccessToken+' * '+Port);
+end;
+
+procedure TCloudClient.SendRequestAddress();
+begin
+  SendRequest('GetCurAddresses',AccessToken);
+end;
+
+procedure TCloudClient.SendRequestInfo(const Port: string);
+begin
+  SendRequest('GetWaletFullInfo',AccessToken+' * '+Port);
+end;
+
+procedure TCloudClient.SendRequestSendTo(const Address: string; Amount: Extended;
+  Confirm: Integer; const Port: string);
+begin
+  SendRequest('SendFromTo',AccessToken+' '+Address+' '+AmountToStr(Amount)+' '+
+    Confirm.ToString+' '+Port);
 end;
 
 end.

@@ -5,7 +5,8 @@ interface
 uses
   System.SysUtils,
   System.DateUtils,
-  System.JSON;
+  System.JSON,
+  Cloud.Utils;
 
 type
   TCloudTransaction = record
@@ -85,6 +86,30 @@ type
     class operator Implicit(const Response: TCloudResponse): TCloudResponseRegistration;
   end;
 
+  TCloudResponseCurrentAddresses = record
+    AddressBTC: TCloudAddress;
+    AddressLTC: TCloudAddress;
+    AddressETH: TCloudAddress;
+    class operator Implicit(const S: string): TCloudResponseCurrentAddresses;
+    class operator Implicit(const Addresses: TCloudResponseCurrentAddresses): string;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseCurrentAddresses;
+  end;
+
+  TCloudResponseInfo = record
+    Address: TCloudAddress;
+    Amount: Extended;
+    class operator Implicit(const S: string): TCloudResponseInfo;
+    class operator Implicit(const Info: TCloudResponseInfo): string;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseInfo;
+  end;
+
+  TCloudResponseSendTo = record
+    Tx: string;
+    class operator Implicit(const S: string): TCloudResponseSendTo;
+    class operator Implicit(const SendTo: TCloudResponseSendTo): string;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseSendTo;
+  end;
+
   TCloudDelegate = class abstract
     procedure OnEvent(Event: Integer; const Text: string); virtual; abstract;
     procedure OnInit(const Init: TCloudResponseInit); virtual; abstract;
@@ -94,6 +119,9 @@ type
     procedure OnAddresses(const Addresses: TCloudResponseGetAddresses); virtual; abstract;
     procedure OnCreateAddress(const Address: TCloudResponseCreateAddress); virtual; abstract;
     procedure OnTransactions(const Transactions: TCloudResponseTransactions); virtual; abstract;
+    procedure OnAddress(const Address: TCloudResponseCurrentAddresses); virtual; abstract;
+    procedure OnInfo(const Info: TCloudResponseInfo); virtual; abstract;
+    procedure OnSendTo(const SendTo: TCloudResponseSendTo); virtual; abstract;
   end;
 
 implementation
@@ -153,6 +181,7 @@ begin
   if Code='23' then Exit('invalid email');
   if Code='93' then Exit('wrong password');
   if Code='211' then Exit('invalid refer');
+  if Code='780' then Exit('address not found');
   if Code='816' then Exit('account not found');
   if Code='829' then Exit('duplicate email');
 
@@ -357,6 +386,104 @@ begin
 end;
 
 class operator TCloudResponseRegistration.Implicit(const Response: TCloudResponse): TCloudResponseRegistration;
+begin
+  Result:=Response.Args;
+end;
+
+{ TCloudResponseGetAddress }
+
+class operator TCloudResponseCurrentAddresses.Implicit(const S: string): TCloudResponseCurrentAddresses;
+var
+  Args: TArray<string>;
+  L: Integer;
+begin
+
+  // U9 23 <2N7FbG7FkUpXtYJcRXe5wuM68wBv5bPEADT> <> <>
+
+  Args:=S.Split([' '],'<','>');
+
+  L:=Length(Args);
+
+  Result:=Default(TCloudResponseCurrentAddresses);
+
+  if L>2 then Result.AddressBTC:=Args[2].Trim(['<','>']);
+  if L>3 then Result.AddressLTC:=Args[3].Trim(['<','>']);
+  if L>4 then Result.AddressETH:=Args[4].Trim(['<','>']);
+
+end;
+
+class operator TCloudResponseCurrentAddresses.Implicit(const Addresses: TCloudResponseCurrentAddresses): string;
+begin
+  Result:=
+    'BTC:'+Addresses.AddressBTC+' '+
+    'LTC:'+Addresses.AddressLTC+' '+
+    'ETH:'+Addresses.AddressETH;
+end;
+
+class operator TCloudResponseCurrentAddresses.Implicit(const Response: TCloudResponse): TCloudResponseCurrentAddresses;
+begin
+  Result:=Response.Args;
+end;
+
+{ TCloudResponseInfo }
+
+class operator TCloudResponseInfo.Implicit(const S: string): TCloudResponseInfo;
+var
+  Args: TArray<string>;
+  Value: string;
+  P: Integer;
+begin
+
+  // U9 ipaVrAtleElE5ocnduDxylVeM20g58vfxm 2N7FbG7FkUpXtYJcRXe5wuM68wBv5bPEADT=0,00200000 18332
+
+  Args:=S.Split([' ']);
+
+  Result:=Default(TCloudResponseInfo);
+
+  if Length(Args)>2 then
+  begin
+
+    Value:=Args[2];
+
+    P:=Value.IndexOf('=');
+
+    Result.Address:=Value.Substring(0,P);
+    Result.Amount:=StrToAmount(Value.Substring(P+1));
+
+  end;
+
+end;
+
+class operator TCloudResponseInfo.Implicit(const Info: TCloudResponseInfo): string;
+begin
+  Result:=Info.Address+'='+AmountToStr(Info.Amount);
+end;
+
+class operator TCloudResponseInfo.Implicit(const Response: TCloudResponse): TCloudResponseInfo;
+begin
+  Result:=Response.Args;
+end;
+
+{ TCloudResponseSendTo }
+
+class operator TCloudResponseSendTo.Implicit(const S: string): TCloudResponseSendTo;
+var Args: TArray<string>;
+begin
+
+  // U9 ipaVrAtleElE5ocnduDxylVeM20g58vfxm 308d8e07787bc9351250e1b714c39adb55177e53870ad6d944319e9ab52b28a0
+
+  Args:=S.Split([' ']);
+
+  Result.Tx:=Args[2];
+
+end;
+
+class operator TCloudResponseSendTo.Implicit(const SendTo: TCloudResponseSendTo): string;
+begin
+  Result:='tx:'+SendTo.Tx;
+end;
+
+class operator TCloudResponseSendTo.Implicit(const Response: TCloudResponse): TCloudResponseSendTo;
 begin
   Result:=Response.Args;
 end;
