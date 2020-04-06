@@ -3,42 +3,39 @@ unit Cloud.Core;
 interface
 
 uses
-  System.SysUtils,
-  System.Classes,
-  System.JSON,
-  System.DateUtils,
-  Net.Socket,
-  Cloud.Consts,
   Cloud.Types,
-  Cloud.Client;
+  Cloud.Consts,
+  Cloud.Client,
+  Cloud.Utils,
+  Cloud.Script.Balance;
 
 type
-  TCloudCore = class(TCloudDelegate)
+  TCloudCore = class
   private
-    CloudClient: TCloudClient;
+    Client: TCloudClient;
     Email: string;
     Password: string;
-    Addresses: TCloudAddresses;
-    Transactions: TCloudTransactions;
+    BalanceScript: TBalanceScript;
   public
-    procedure OnEvent(Event: Integer; const Text: string); override;
-    procedure OnInit(const Init: TCloudResponseInit); override;
-    procedure OnError(const Error: TCloudResponseError); override;
-    procedure OnRegistration(const Registration: TCloudResponseRegistration); override;
-    procedure OnLogin(const Login: TCloudResponseLogin); override;
-    procedure OnAddresses(const Addresses: TCloudResponseGetAddresses); override;
-    procedure OnCreateAddress(const Address: TCloudResponseCreateAddress); override;
-    procedure OnTransactions(const Transactions: TCloudResponseTransactions); override;
-    constructor Create(CloudClient: TCloudClient);
+    constructor Create;
+    destructor Destroy; override;
+    procedure SendRequestBalance(const Port: string);
     procedure SetAuth(const Email,Password: string);
   end;
 
 implementation
 
-constructor TCloudCore.Create(CloudClient: TCloudClient);
+constructor TCloudCore.Create;
 begin
-  Self.CloudClient:=CloudClient;
-  CloudClient.SetDelegate(Self);
+  Client:=TCloudClient.Create;
+  BalanceScript:=TBalanceScript.Create(Client);
+end;
+
+destructor TCloudCore.Destroy;
+begin
+  Client.Free;
+  BalanceScript.Free;
+  inherited;
 end;
 
 procedure TCloudCore.SetAuth(const Email,Password: string);
@@ -47,59 +44,13 @@ begin
   Self.Password:=Password;
 end;
 
-procedure TCloudCore.OnEvent(Event: Integer; const Text: string);
-begin
- {$IFDEF CONSOLE}
-  case Event of
-  EVENT_REQUEST: Writeln('>'+Text);
-  EVENT_RESPONSE: Writeln('<'+Text);
-  else Writeln(Text);
-  end;
- {$ENDIF}
-end;
-
-procedure TCloudCore.OnInit(const Init: TCloudResponseInit);
-begin
-  CloudClient.SendRequestLogin(Email,Password);
-end;
-
-procedure TCloudCore.OnError(const Error: TCloudResponseError);
-begin
-  if Error.Code='816' then
-    CloudClient.SendRequestRegistration(Email,Password);
-end;
-
-procedure TCloudCore.OnRegistration(const Registration: TCloudResponseRegistration);
-begin
-  CloudClient.SendRequestLogin(Email,Password);
-end;
-
-procedure TCloudCore.OnLogin(const Login: TCloudResponseLogin);
-begin
-  CloudClient.SendRequestAddresses(PORT_BITCOIN);
-end;
-
-procedure TCloudCore.OnAddresses(const Addresses: TCloudResponseGetAddresses);
+procedure TCloudCore.SendRequestBalance(const Port: string);
 begin
 
-  Self.Addresses:=Addresses.Addresses;
+  Client.SetDelegate(BalanceScript);
 
-  if not Addresses.Error then
+  BalanceScript.Execute(Email,Password,Port);
 
-  if Addresses.Addresses.IsEmpty then
-    CloudClient.SendRequestCreateAddress(PORT_BITCOIN)
-  else
-    CloudClient.SendRequestTransactions(PORT_BITCOIN)
-
-end;
-
-procedure TCloudCore.OnCreateAddress(const Address: TCloudResponseCreateAddress);
-begin
-end;
-
-procedure TCloudCore.OnTransactions(const Transactions: TCloudResponseTransactions);
-begin
-  Self.Transactions:=Transactions.Transactions;
 end;
 
 end.

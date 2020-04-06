@@ -17,6 +17,28 @@ uses
 
 { $DEFINE CLOUD}
 
+
+{$IFDEF CLOUD}
+
+var
+  CloudCore: TCloudCore;
+
+begin {main}
+
+  CloudCore:=TCloudCore.Create;
+
+  CloudCore.SetAuth('xxx@1.com','xxx');
+
+  CloudCore.SendRequestBalance('BTC');
+
+  while True do CheckSynchronize(100);
+
+  CloudCore.Free;
+
+end.
+
+{$ELSE}
+
 var
   Client: TCloudClient;
   Command: string;
@@ -24,18 +46,6 @@ var
 begin {main}
 
   Client:=TCloudClient.Create;
-
-{$IFDEF CLOUD}
-
-  var CloudCore:=TCloudCore.Create(Client);
-
-  CloudCore.SetAuth('555b@1.com','555');
-
-  Client.Connect;
-
-  while True do CheckSynchronize(100);
-
-{$ELSE}
 
   var CloudCore:=TCloudConsole.Create(Client);
 
@@ -53,11 +63,12 @@ begin {main}
 
   until not CloudCore.DoConsoleCommand(Command);
 
-{$ENDIF}
-
   Client.Free;
   CloudCore.Free;
 
 end.
+
+{$ENDIF}
+
 
 

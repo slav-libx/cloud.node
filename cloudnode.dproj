@@ -245,9 +245,9 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win64\Debug\cloudnode.rsm" Configuration="Debug" Class="DebugSymbols">
-                    <Platform Name="Win64">
-                        <RemoteName>cloudnode.rsm</RemoteName>
+                <DeployFile LocalName="Linux64\Release\cloudnode" Configuration="Release" Class="ProjectOutput">
+                    <Platform Name="Linux64">
+                        <RemoteName>cloudnode</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

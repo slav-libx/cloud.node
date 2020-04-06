@@ -11,7 +11,18 @@
         <DeviceId Condition="'$(Platform)'=='iOSSimulator'"/>
     </PropertyGroup>
     <ItemGroup Condition="'$(Platform)'=='iOSDevice64'"/>
-    <ItemGroup Condition="'$(Platform)'=='Win64'"/>
+    <ItemGroup Condition="'$(Platform)'=='Win64'">
+        <DeployFile Include="Win64\Debug\cloudnode.exe" Condition="'$(Config)'=='Debug'">
+            <RemoteDir>cloudnode\</RemoteDir>
+            <RemoteName>cloudnode.exe</RemoteName>
+            <DeployClass>ProjectOutput</DeployClass>
+            <Operation>0</Operation>
+            <LocalCommand/>
+            <RemoteCommand/>
+            <Overwrite>True</Overwrite>
+            <Required>True</Required>
+        </DeployFile>
+    </ItemGroup>
     <ItemGroup Condition="'$(Platform)'=='iOSDevice32'"/>
     <ItemGroup Condition="'$(Platform)'=='Win32'">
         <DeployFile Include="Win32\Debug\cloudnode.exe" Condition="'$(Config)'=='Debug'">
@@ -27,6 +38,16 @@
     </ItemGroup>
     <ItemGroup Condition="'$(Platform)'=='Linux64'">
         <DeployFile Include="Linux64\Debug\cloudnode" Condition="'$(Config)'=='Debug'">
+            <RemoteDir>cloudnode\</RemoteDir>
+            <RemoteName>cloudnode</RemoteName>
+            <DeployClass>ProjectOutput</DeployClass>
+            <Operation>1</Operation>
+            <LocalCommand/>
+            <RemoteCommand/>
+            <Overwrite>True</Overwrite>
+            <Required>True</Required>
+        </DeployFile>
+        <DeployFile Include="Linux64\Release\cloudnode" Condition="'$(Config)'=='Release'">
             <RemoteDir>cloudnode\</RemoteDir>
             <RemoteName>cloudnode</RemoteName>
             <DeployClass>ProjectOutput</DeployClass>
