@@ -48,7 +48,7 @@ procedure TBalanceScript.DoError(const Text: string);
 begin
   Writeln('Impossible: '+Text);
 end;
-
+
 procedure TBalanceScript.Execute(const Email,Password,Port: string);
 begin
 
@@ -56,14 +56,14 @@ begin
 
   //Self.Port:=Map(Port,['BTC','LTC','ETH'],[PORT_BITCOIN,PORT_LIGHTCOIN,PORT_ETHEREUM]);
 
-  Self.Port:=Map(Port,['BTC','LTC'],[PORT_BITCOIN,PORT_LIGHTCOIN]); // so far only bitcoin
-                                                                    // the code above is for everyone
-  if Self.Port='' then
+  Self.Port:=Map(Port,['BTC','LTC'],[PORT_BITCOIN,PORT_LIGHTCOIN]); // so far only bitcoin
+                                                                    // the code above is for everyone
+  if Self.Port='' then
 
-    DoError('forbidden coin')
+    DoError('forbidden coin')
 
-  else begin
-
+  else begin
+
     Self.Email:=Email;
     Self.Password:=Password;
 
@@ -75,7 +75,7 @@ begin
   end;
 
 end;
-
+
 procedure TBalanceScript.OnEvent(Event: Integer; const Text: string);
 begin
 
