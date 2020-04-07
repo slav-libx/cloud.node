@@ -56,8 +56,8 @@ begin
 
   //Self.Port:=Map(Port,['BTC','LTC','ETH'],[PORT_BITCOIN,PORT_LIGHTCOIN,PORT_ETHEREUM]);
 
-  Self.Port:=Map(Port,['BTC'],[PORT_BITCOIN]); // so far only bitcoin
-                                               // the code above is for everyone
+  Self.Port:=Map(Port,['BTC','LTC'],[PORT_BITCOIN,PORT_LIGHTCOIN]); // so far only bitcoin
+                                                                    // the code above is for everyone
   if Self.Port='' then
 
     DoError('forbidden coin')

@@ -17,7 +17,6 @@ uses
 
 { $DEFINE CLOUD}
 
-
 {$IFDEF CLOUD}
 
 var

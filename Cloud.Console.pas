@@ -108,14 +108,14 @@ end;
 procedure TCloudConsole.DoPrintHelp(const Title: string);
 begin
   Writeln(Title);
-  Writeln('reg <email> <password> // registration account');
-  Writeln('login <email> <password> // login account');
-  Writeln('add <b|l|e> // add new address');
-  Writeln('list <b|l|e> // get addresses list');
-  Writeln('tx <b|l|e> // get transactions list');
-  Writeln('get // get current addresses list');
-  Writeln('info <b|l|e> // get current wallet info');
-  Writeln('send <b|l|e> <address> <amount> // get current wallet info');
+  Writeln('reg <email> <password> '#9'- registration account');
+  Writeln('login <email> <password> '#9'- login account');
+  Writeln('add <b|l|e> '#9'- add new address');
+  Writeln('list <b|l|e> '#9'- get addresses list');
+  Writeln('tx <b|l|e> '#9'- get transactions list');
+  Writeln('get '#9'- get current addresses list');
+  Writeln('info <b|l|e> '#9'- get current wallet info');
+  Writeln('send <b|l|e> <address> <amount> '#9'- get current wallet info');
   Writeln('exit');
 end;
 
