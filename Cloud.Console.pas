@@ -121,11 +121,7 @@ end;
 
 function GetPort(const Port: string): string;
 begin
-  Result:=Port;
-  if Result='' then Exit(PORT_BITCOIN);
-  if Result='b' then Exit(PORT_BITCOIN);
-  if Result='l' then Exit(PORT_LIGHTCOIN);
-  if Result='e' then Exit(PORT_ETHEREUM);
+  Result:=Map(Port,['l','e'],[PORT_LIGHTCOIN,PORT_ETHEREUM],PORT_BITCOIN);
 end;
 
 function TCloudConsole.DoConsoleCommand(const Command: string): Boolean;
