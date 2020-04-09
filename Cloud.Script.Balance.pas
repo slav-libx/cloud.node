@@ -22,7 +22,7 @@ type
     Port: string;
     procedure DoError(const Text: string);
   public
-    procedure OnEvent(Event: Integer; const Text: string); override;
+    procedure OnEvent(Event: TCloudEvent; const Text: string); override;
     procedure OnInit(const Init: TCloudResponseInit); override;
     procedure OnError(const Error: TCloudResponseError); override;
     procedure OnRegistration(const Registration: TCloudResponseRegistration); override;
@@ -54,10 +54,8 @@ begin
 
   Writeln('Execute request balance '+Email+' '+Port);
 
-  //Self.Port:=Map(Port,['BTC','LTC','ETH'],[PORT_BITCOIN,PORT_LIGHTCOIN,PORT_ETHEREUM]);
+  Self.Port:=SymbolToPort(Port);
 
-  Self.Port:=Map(Port,['BTC','LTC'],[PORT_BITCOIN,PORT_LIGHTCOIN]); // so far only bitcoin
-                                                                    // the code above is for everyone
   if Self.Port='' then
 
     DoError('forbidden coin')
@@ -76,7 +74,7 @@ begin
 
 end;
 
-procedure TBalanceScript.OnEvent(Event: Integer; const Text: string);
+procedure TBalanceScript.OnEvent(Event: TCloudEvent; const Text: string);
 begin
 
   case Event of

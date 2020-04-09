@@ -9,6 +9,9 @@ uses
   Cloud.Utils;
 
 type
+  TCloudEvent = (EVENT_NONE,EVENT_ERROR,EVENT_CONNECTING,EVENT_CONNECTED,
+    EVENT_DISCONNECTED,EVENT_REQUEST,EVENT_RESPONSE);
+
   TCloudTransaction = record
   public
     ID: string;
@@ -111,7 +114,7 @@ type
   end;
 
   TCloudDelegate = class abstract
-    procedure OnEvent(Event: Integer; const Text: string); virtual; abstract;
+    procedure OnEvent(Event: TCloudEvent; const Text: string); virtual; abstract;
     procedure OnInit(const Init: TCloudResponseInit); virtual; abstract;
     procedure OnError(const Error: TCloudResponseError); virtual; abstract;
     procedure OnRegistration(const Registration: TCloudResponseRegistration); virtual; abstract;
@@ -153,7 +156,7 @@ begin
     ' address:'+Transaction.Address+
     ' operation:'+Transaction.Operation+
     ' date:'+DateToISO8601(Transaction.Date)+
-    ' amount:'+FormatFloat('0.00######',Transaction.Amount)+
+    ' amount:'+AmountToStr(Transaction.Amount)+
     ' confirmations:'+Transaction.Confirmations.ToString;
 
 end;
@@ -181,7 +184,11 @@ begin
   if Code='23' then Exit('invalid email');
   if Code='93' then Exit('wrong password');
   if Code='211' then Exit('invalid refer');
+  if Code='444' then Exit('account not have address');
   if Code='780' then Exit('address not found');
+  if Code='781' then Exit('incorrect response from server');
+  if Code='782' then Exit('insufficient funds');
+  if Code='783' then Exit('no unspent transactions');
   if Code='816' then Exit('account not found');
   if Code='829' then Exit('duplicate email');
 

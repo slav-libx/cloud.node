@@ -14,7 +14,7 @@ type
   private
     CloudClient: TCloudClient;
     procedure DoPrintHelp(const Title: string);
-    procedure OnEvent(Event: Integer; const Text: string); override;
+    procedure OnEvent(Event: TCloudEvent; const Text: string); override;
     procedure OnInit(const Init: TCloudResponseInit); override;
     procedure OnError(const Error: TCloudResponseError); override;
     procedure OnRegistration(const Registration: TCloudResponseRegistration); override;
@@ -38,7 +38,7 @@ begin
   CloudClient.SetDelegate(Self);
 end;
 
-procedure TCloudConsole.OnEvent(Event: Integer; const Text: string);
+procedure TCloudConsole.OnEvent(Event: TCloudEvent; const Text: string);
 begin
   case Event of
   EVENT_REQUEST: Writeln('>'+Text);
@@ -108,20 +108,23 @@ end;
 procedure TCloudConsole.DoPrintHelp(const Title: string);
 begin
   Writeln(Title);
-  Writeln('reg <email> <password> '#9'- registration account');
-  Writeln('login <email> <password> '#9'- login account');
-  Writeln('add <b|l|e> '#9'- add new address');
-  Writeln('list <b|l|e> '#9'- get addresses list');
-  Writeln('tx <b|l|e> '#9'- get transactions list');
-  Writeln('get '#9'- get current addresses list');
-  Writeln('info <b|l|e> '#9'- get current wallet info');
-  Writeln('send <b|l|e> <address> <amount> '#9'- get current wallet info');
-  Writeln('exit');
+  Writeln('reg <email> <password> '#9#9#9'- registration account');
+  Writeln('login <email> <password> '#9#9'- login account');
+  Writeln('add <btc|ltc|eth> '#9#9#9'- add new address');
+  Writeln('list <btc|ltc|eth> '#9#9#9'- get addresses list');
+  Writeln('tx <btc|ltc|eth> '#9#9#9'- get transactions list');
+  Writeln('get'#9#9#9#9#9'- get current addresses list');
+  Writeln('info <btc|ltc|eth> '#9#9#9'- get current wallet info');
+  Writeln('send <btc|ltc|eth> <address> <amount> '#9'- send coins to address');
+  Writeln('exit'#9#9#9#9#9'- terminated');
 end;
 
-function GetPort(const Port: string): string;
+function GetPort(const Symbol: string): string;
 begin
-  Result:=Map(Port,['l','e'],[PORT_LIGHTCOIN,PORT_ETHEREUM],PORT_BITCOIN);
+  if Symbol='' then
+    Result:=PORT_BITCOIN
+  else
+    Result:=SymbolToPort(Symbol);
 end;
 
 function TCloudConsole.DoConsoleCommand(const Command: string): Boolean;
