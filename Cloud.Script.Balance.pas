@@ -46,7 +46,7 @@ end;
 
 procedure TBalanceScript.DoError(const Text: string);
 begin
-  Writeln('Impossible: '+Text);
+  Writeln(Text);
 end;
 
 procedure TBalanceScript.Execute(const Email,Password,Port: string);

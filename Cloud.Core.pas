@@ -3,6 +3,7 @@ unit Cloud.Core;
 interface
 
 uses
+  System.Classes,
   Cloud.Types,
   Cloud.Consts,
   Cloud.Client,
@@ -19,6 +20,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure Wait;
     procedure SendRequestBalance(const Port: string);
     procedure SetAuth(const Email,Password: string);
   end;
@@ -36,6 +38,12 @@ begin
   Client.Free;
   BalanceScript.Free;
   inherited;
+end;
+
+procedure TCloudCore.Wait;
+begin
+  while Client.Workloaded do CheckSynchronize(100);
+  while CheckSynchronize(100) do;
 end;
 
 procedure TCloudCore.SetAuth(const Email,Password: string);

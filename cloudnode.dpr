@@ -7,6 +7,7 @@ uses
   System.Classes,
   System.JSON,
   System.DateUtils,
+  System.Console,
   Net.Socket in '..\relictum.node\Library\Net.Socket.pas',
   Cloud.Core in 'Cloud.Core.pas',
   Cloud.Types in 'Cloud.Types.pas',
@@ -21,20 +22,43 @@ uses
 
 var
   CloudCore: TCloudCore;
+  Console: TConsole;
+  Command: Word;
 
-begin {main}
+begin
+
+  Console:=TConsole.Create;
 
   CloudCore:=TCloudCore.Create;
 
   CloudCore.SetAuth('xxx@1.com','xxx');
 
-  CloudCore.SendRequestBalance('BTC');
+  Command:=49;
 
-  while True do CheckSynchronize(100);
+  while True do
+  begin
+
+    case Command of
+    13:;
+    49:
+    begin
+      Writeln;
+      CloudCore.SendRequestBalance('BTC');
+      CloudCore.Wait;
+      Writeln;
+    end;
+
+    else Break;
+    end;
+
+    Write('Press command key... 1 - request balance, 2 - transfer');
+
+    Command:=Console.ReadKey; Writeln;
+
+  end;
 
   CloudCore.Free;
-
-end.
+  Console.Free;
 
 {$ELSE}
 
@@ -42,7 +66,7 @@ var
   Client: TCloudClient;
   Command: string;
 
-begin {main}
+begin
 
   Client:=TCloudClient.Create;
 
@@ -65,9 +89,10 @@ begin {main}
   Client.Free;
   CloudCore.Free;
 
+{$ENDIF}
+
 end.
 
-{$ENDIF}
 
 
 
