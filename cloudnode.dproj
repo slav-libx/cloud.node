@@ -189,13 +189,18 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="Cloud\System.Console.pas"/>
         <DCCReference Include="..\relictum.node\Library\Net.Socket.pas"/>
-        <DCCReference Include="Cloud.Core.pas"/>
-        <DCCReference Include="Cloud.Types.pas"/>
-        <DCCReference Include="Cloud.Consts.pas"/>
-        <DCCReference Include="Cloud.Client.pas"/>
-        <DCCReference Include="Cloud.Console.pas"/>
-        <DCCReference Include="Cloud.Utils.pas"/>
+        <DCCReference Include="..\relictum.node\Library\Lib.Timer.pas"/>
+        <DCCReference Include="Cloud\Cloud.Core.pas"/>
+        <DCCReference Include="Cloud\Cloud.Types.pas"/>
+        <DCCReference Include="Cloud\Cloud.Consts.pas"/>
+        <DCCReference Include="Cloud\Cloud.Client.pas"/>
+        <DCCReference Include="Cloud\Cloud.Console.pas"/>
+        <DCCReference Include="Cloud\Cloud.Utils.pas"/>
+        <DCCReference Include="Cloud\App.Intf.pas"/>
+        <DCCReference Include="Cloud\Cloud.Log.pas"/>
+        <DCCReference Include="Cloud\Cloud.App.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

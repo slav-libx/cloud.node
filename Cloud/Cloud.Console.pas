@@ -25,6 +25,9 @@ type
     procedure OnAddress(const Address: TCloudResponseCurrentAddresses); override;
     procedure OnInfo(const Info: TCloudResponseInfo); override;
     procedure OnSendTo(const SendTo: TCloudResponseSendTo); override;
+    procedure OnRatio(const Ratio: TCloudResponseRatio); override;
+    procedure OnRequestForging(const Forging: TCloudRequestForging); override;
+    procedure OnForging(const Forging: TCloudResponseForging); override;
   public
     constructor Create(CloudClient: TCloudClient);
     function DoConsoleCommand(const Command: string): Boolean;
@@ -105,10 +108,25 @@ begin
   Writeln(string(SendTo));
 end;
 
+procedure TCloudConsole.OnRatio(const Ratio: TCloudResponseRatio);
+begin
+  Writeln(string(Ratio));
+end;
+
+procedure TCloudConsole.OnRequestForging(const Forging: TCloudRequestForging);
+begin
+  Writeln(string(Forging));
+end;
+
+procedure TCloudConsole.OnForging(const Forging: TCloudResponseForging);
+begin
+  Writeln('tx:'+Forging.Tx);
+end;
+
 procedure TCloudConsole.DoPrintHelp(const Title: string);
 begin
   Writeln(Title);
-  Writeln('reg <email> <password> '#9#9#9'- registration account');
+  Writeln('reg <email> <password> <ref>'#9#9'- registration account');
   Writeln('login <email> <password> '#9#9'- login account');
   Writeln('add <btc|ltc|eth> '#9#9#9'- add new address');
   Writeln('list <btc|ltc|eth> '#9#9#9'- get addresses list');
@@ -116,15 +134,19 @@ begin
   Writeln('get'#9#9#9#9#9'- get current addresses list');
   Writeln('info <btc|ltc|eth> '#9#9#9'- get current wallet info');
   Writeln('send <btc|ltc|eth> <address> <amount> '#9'- send coins to address');
+  Writeln('ratio'#9#9#9#9#9'- get USD ratio coins');
+  Writeln('forg <rlc|gtn> <btc|ltc|eth>'#9#9'- forging');
   Writeln('exit'#9#9#9#9#9'- terminated');
 end;
 
 function GetPort(const Symbol: string): string;
 begin
-  if Symbol='' then
-    Result:=PORT_BITCOIN
-  else
-    Result:=SymbolToPort(Symbol);
+  Result:=SymbolToPort(Symbol,PORT_BITCOIN);
+end;
+
+function GetToken(const Symbol: string): Integer;
+begin
+  Result:=Map(Symbol,['rlc','gtn'],['1','2'],'1').ToInteger;
 end;
 
 function TCloudConsole.DoConsoleCommand(const Command: string): Boolean;
@@ -143,7 +165,7 @@ begin
   else
 
   if Args[0]='reg' then
-    CloudClient.SendRequestRegistration(Args[1],Args[2])
+    CloudClient.SendRequestRegistration(Args[1],Args[2],StrToIntDef(Args[3],1))
   else
 
   if Args[0]='login' then
@@ -172,6 +194,14 @@ begin
 
   if Args[0]='send' then
     CloudClient.SendRequestSendTo(Args[2],StrToAmount(Args[3]),6,GetPort(Args[1]))
+  else
+
+  if Args[0]='ratio' then
+    CloudClient.SendRequestRatio()
+  else
+
+  if Args[0]='forg' then
+    CloudClient.SendRequestForging(21,GetToken(Args[1]),GetPort(Args[2]),25,0.0045,6456.543,1.00000,1.00000)
   else
 
     DoPrintHelp('unknown command, use:');

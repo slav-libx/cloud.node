@@ -9,8 +9,8 @@ uses
   Cloud.Utils;
 
 type
-  TCloudEvent = (EVENT_NONE,EVENT_ERROR,EVENT_CONNECTING,EVENT_CONNECTED,
-    EVENT_DISCONNECTED,EVENT_REQUEST,EVENT_RESPONSE);
+  TCloudEvent = (EVENT_CONNECTING,EVENT_CONNECTED,EVENT_DISCONNECTED,
+    EVENT_REQUEST,EVENT_RESPONSE,EVENT_EXCEPT);
 
   TCloudTransaction = record
   public
@@ -101,6 +101,7 @@ type
   TCloudResponseInfo = record
     Address: TCloudAddress;
     Amount: Extended;
+    Port: string;
     class operator Implicit(const S: string): TCloudResponseInfo;
     class operator Implicit(const Info: TCloudResponseInfo): string;
     class operator Implicit(const Response: TCloudResponse): TCloudResponseInfo;
@@ -111,6 +112,38 @@ type
     class operator Implicit(const S: string): TCloudResponseSendTo;
     class operator Implicit(const SendTo: TCloudResponseSendTo): string;
     class operator Implicit(const Response: TCloudResponse): TCloudResponseSendTo;
+  end;
+
+  TCloudResponseRatio = record
+    RatioBTC: Extended;
+    RatioLTC: Extended;
+    RatioETH: Extended;
+    class operator Implicit(const S: string): TCloudResponseRatio;
+    class operator Implicit(const Ratio: TCloudResponseRatio): string;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseRatio;
+  end;
+
+  TCloudRequestForging = record
+    Owner: Int64;
+    Buyer: Int64;
+    BuyToken: Int64;
+    PayPort: string;
+    BuyAmount: Extended;
+    PayAmount: Extended;
+    Ratio: Extended;
+    Commission1: Extended;
+    Commission2: Extended;
+    Request: string;
+    class operator Implicit(const S: string): TCloudRequestForging;
+    class operator Implicit(const Forging: TCloudRequestForging): string;
+    class operator Implicit(const Response: TCloudResponse): TCloudRequestForging;
+  end;
+
+  TCloudResponseForging = record
+    Tx: string;
+    class operator Implicit(const S: string): TCloudResponseForging;
+    class operator Implicit(const Forging: TCloudResponseForging): string;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseForging;
   end;
 
   TCloudDelegate = class abstract
@@ -125,7 +158,10 @@ type
     procedure OnAddress(const Address: TCloudResponseCurrentAddresses); virtual; abstract;
     procedure OnInfo(const Info: TCloudResponseInfo); virtual; abstract;
     procedure OnSendTo(const SendTo: TCloudResponseSendTo); virtual; abstract;
-  end;
+    procedure OnRatio(const Ratio: TCloudResponseRatio); virtual; abstract;
+    procedure OnRequestForging(const Forging: TCloudRequestForging); virtual; abstract;
+    procedure OnForging(const Forging: TCloudResponseForging); virtual; abstract;
+end;
 
 implementation
 
@@ -180,7 +216,7 @@ end;
 function TCloudResponseError.ErrorString: string;
 begin
 
-  if Code='20' then Exit('unknown wallet');
+  if Code='20' then Exit('not authorized');
   if Code='23' then Exit('invalid email');
   if Code='93' then Exit('wrong password');
   if Code='211' then Exit('invalid refer');
@@ -191,6 +227,13 @@ begin
   if Code='783' then Exit('no unspent transactions');
   if Code='816' then Exit('account not found');
   if Code='829' then Exit('duplicate email');
+
+  if Code='1001' then Exit('wrong pay coin');
+  if Code='1002' then Exit('wrong buy coin');
+  if Code='1003' then Exit('wrong pay amount');
+  if Code='1006' then Exit('owner offline');
+  if Code='1007' then Exit('wrong destination');
+  if Code='1008' then Exit('wrong ratio');
 
   Result:='';
 
@@ -438,7 +481,7 @@ class operator TCloudResponseInfo.Implicit(const S: string): TCloudResponseInfo;
 var
   Args: TArray<string>;
   Value: string;
-  P: Integer;
+  P,L: Integer;
 begin
 
   // U9 ipaVrAtleElE5ocnduDxylVeM20g58vfxm 2N7FbG7FkUpXtYJcRXe5wuM68wBv5bPEADT=0,00200000 18332
@@ -447,7 +490,9 @@ begin
 
   Result:=Default(TCloudResponseInfo);
 
-  if Length(Args)>2 then
+  L:=Length(Args);
+
+  if L>2 then
   begin
 
     Value:=Args[2];
@@ -459,11 +504,13 @@ begin
 
   end;
 
+  if L>3 then Result.Port:=Args[3];
+
 end;
 
 class operator TCloudResponseInfo.Implicit(const Info: TCloudResponseInfo): string;
 begin
-  Result:=Info.Address+'='+AmountToStr(Info.Amount);
+  Result:=Info.Address+'='+AmountToStr(Info.Amount)+' '+PortToSymbol(Info.Port);
 end;
 
 class operator TCloudResponseInfo.Implicit(const Response: TCloudResponse): TCloudResponseInfo;
@@ -491,6 +538,114 @@ begin
 end;
 
 class operator TCloudResponseSendTo.Implicit(const Response: TCloudResponse): TCloudResponseSendTo;
+begin
+  Result:=Response.Args;
+end;
+
+
+{ TCloudResponseRatio }
+
+class operator TCloudResponseRatio.Implicit(const S: string): TCloudResponseRatio;
+var
+  Args: TArray<string>;
+  L: Integer;
+begin
+
+  // U2 6879.295 * *
+
+  Args:=S.Split([' '],'<','>');
+
+  L:=Length(Args);
+
+  Result:=Default(TCloudResponseRatio);
+
+  if L>0 then Result.RatioBTC:=StrToAmountDef(Args[1],0);
+  if L>1 then Result.RatioLTC:=StrToAmountDef(Args[2],0);
+  if L>2 then Result.RatioETH:=StrToAmountDef(Args[3],0);
+
+end;
+
+class operator TCloudResponseRatio.Implicit(const Ratio: TCloudResponseRatio): string;
+begin
+  Result:=
+    'BTC/USD='+AmountToStr(Ratio.RatioBTC)+' '+
+    'LTC/USD='+AmountToStr(Ratio.RatioLTC)+' '+
+    'ETH/USD='+AmountToStr(Ratio.RatioETH);
+end;
+
+class operator TCloudResponseRatio.Implicit(const Response: TCloudResponse): TCloudResponseRatio;
+begin
+  Result:=Response.Args;
+end;
+
+{ TCloudRequestForging }
+
+class operator TCloudRequestForging.Implicit(const S: string): TCloudRequestForging;
+var
+  Args: TArray<string>;
+  L: Integer;
+begin
+
+  // U15 ipa0K0tcMwAcPfJ3fBV3lqFBYicawTSW1r 21 2 18332 25 0.0045 6456.543 1.00000 1.00000
+
+  Args:=S.Split([' '],'<','>');
+
+  L:=Length(Args);
+
+  Result:=Default(TCloudRequestForging);
+
+  Result.Request:=Skip(S,[' '],1);
+
+  if L>1 then Result.Owner:=StrToInt64Def(Args[2],0);
+  if L>2 then Result.BuyToken:=StrToInt64Def(Args[3],0);
+  if L>3 then Result.PayPort:=Args[4];
+  if L>4 then Result.BuyAmount:=StrToAmountDef(Args[5],0);
+  if L>5 then Result.PayAmount:=StrToAmountDef(Args[6],0);
+  if L>6 then Result.Ratio:=StrToAmountDef(Args[7],0);
+  if L>7 then Result.Commission1:=StrToAmountDef(Args[8],0);
+  if L>8 then Result.Commission2:=StrToAmountDef(Args[9],0);
+  if L>9 then Result.Buyer:=StrToInt64Def(Args[10],0);
+
+end;
+
+class operator TCloudRequestForging.Implicit(const Forging: TCloudRequestForging): string;
+begin
+  Result:=
+    AmountToStr(Forging.PayAmount)+' '+Forging.PayPort+' -> '+
+    AmountToStr(Forging.BuyAmount)+' '+Forging.BuyToken.ToString;
+end;
+
+class operator TCloudRequestForging.Implicit(const Response: TCloudResponse): TCloudRequestForging;
+begin
+  Result:=Response.Args;
+end;
+
+{ TCloudResponseForging }
+
+class operator TCloudResponseForging.Implicit(const S: string): TCloudResponseForging;
+var
+  Args: TArray<string>;
+  L: Integer;
+begin
+
+  //
+
+  Args:=S.Split([' '],'<','>');
+
+  L:=Length(Args);
+
+  Result:=Default(TCloudResponseForging);
+
+  if L>1 then Result.Tx:=Args[2];
+
+end;
+
+class operator TCloudResponseForging.Implicit(const Forging: TCloudResponseForging): string;
+begin
+  Result:=Forging.Tx;
+end;
+
+class operator TCloudResponseForging.Implicit(const Response: TCloudResponse): TCloudResponseForging;
 begin
   Result:=Response.Args;
 end;

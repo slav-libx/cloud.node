@@ -8,6 +8,7 @@ uses
   System.JSON,
   System.DateUtils,
   Net.Socket,
+  Lib.Timer,
   Cloud.Consts,
   Cloud.Types,
   Cloud.Utils;
@@ -15,6 +16,7 @@ uses
 type
   TCloudClient = class
   private
+    KeepAliveTimer: TTimer;
     Delegate: TCloudDelegate;
     Client: TTCPSocket;
     Workload: Boolean;
@@ -24,8 +26,13 @@ type
     ReceiveString: string;
     AccessToken: string;
     function GetConnected: Boolean;
+    function GetAuthorized: Boolean;
+    function GetReady: Boolean;
     procedure DoResponse(const S: string);
-    procedure SendRequest(const Command,Args: string);
+    procedure DoRecoveryConnection;
+    procedure SendRequest(const Command,Args: string; const ShowArgs: string='');
+    procedure SendResponse(const Command,Args: string);
+    procedure OnKeepAliveTimer(Sender: TObject);
   private
     procedure OnClientConnect(Sender: TObject);
     procedure OnClientAfterConnect(Sender: TObject);
@@ -33,12 +40,17 @@ type
     procedure OnClientClose(Sender: TObject);
     procedure OnClientException(Sender: TObject);
   public
+    KeepAlive: Boolean;
     constructor Create;
     destructor Destroy; override;
-    function SetEndPoint(const Host: string; Port: Word): TCloudClient;
+    procedure SetEndPoint(const Host: string; Port: Word);
+    procedure SetRecoveryInterval(Interval: Cardinal);
     procedure SetDelegate(Delegate: TCloudDelegate);
     procedure Connect;
-    procedure SendRequestRegistration(const Email,Password: string);
+    procedure Disconnect;
+    procedure Unauthorized;
+    procedure Cancel;
+    procedure SendRequestRegistration(const Email,Password: string; AccountID: Int64);
     procedure SendRequestLogin(const Email,Password: string);
     procedure SendRequestAddresses(const Port: string);
     procedure SendRequestTransactions(const Port: string);
@@ -47,9 +59,14 @@ type
     procedure SendRequestInfo(const Port: string);
     procedure SendRequestSendTo(const Address: string; Amount: Extended;
       Confirm: Integer; const Port: string);
+    procedure SendRequestRatio();
+    procedure SendRequestForging(Owner,BuyToken: Int64; const PayPort: string;
+      BuyAmount,PayAmount,Ratio,Commission1,Commission2: Extended);
+    procedure SendResponseForging(const Request,Result: string);
     property Workloaded: Boolean read Workload;
+    property Ready: Boolean read GetReady;
     property Connected: Boolean read GetConnected;
-    property ConnectID: string read ConnectionID;
+    property Authorized: Boolean read GetAuthorized;
   end;
 
 implementation
@@ -70,19 +87,30 @@ begin
   Client.OnClose:=OnClientClose;
   Client.OnExcept:=OnClientException;
 
+  KeepAliveTimer:=TTimer.Create(nil);
+  KeepAliveTimer.Enabled:=False;
+  KeepAliveTimer.OnTimer:=OnKeepAliveTimer;
+
+  SetRecoveryInterval(4000);
+
 end;
 
 destructor TCloudClient.Destroy;
 begin
   Client.Free;
+  KeepAliveTimer.Free;
   inherited;
 end;
 
-function TCloudClient.SetEndPoint(const Host: string; Port: Word): TCloudClient;
+procedure TCloudClient.SetEndPoint(const Host: string; Port: Word);
 begin
   Self.Host:=Host;
   Self.Port:=Port;
-  Result:=Self;
+end;
+
+procedure TCloudClient.SetRecoveryInterval(Interval: Cardinal);
+begin
+  KeepAliveTimer.Interval:=Interval;
 end;
 
 procedure TCloudClient.SetDelegate(Delegate: TCloudDelegate);
@@ -95,14 +123,50 @@ begin
   Result:=Client.Connected;
 end;
 
+function TCloudClient.GetAuthorized: Boolean;
+begin
+  Result:=AccessToken<>'';
+end;
+
+function TCloudClient.GetReady: Boolean;
+begin
+  Result:=Connected and Authorized;
+end;
+
+procedure TCloudClient.Unauthorized;
+begin
+  AccessToken:='';
+end;
+
+procedure TCloudClient.Cancel;
+begin
+  Workload:=False;
+end;
+
+procedure TCloudClient.OnKeepAliveTimer(Sender: TObject);
+begin
+  KeepAliveTimer.Enabled:=False;
+  Connect;
+end;
+
+procedure TCloudClient.DoRecoveryConnection;
+begin
+  KeepAliveTimer.Enabled:=True;
+end;
+
 procedure TCloudClient.OnClientAfterConnect(Sender: TObject);
 begin
 end;
 
 procedure TCloudClient.OnClientClose(Sender: TObject);
 begin
+
   Delegate.OnEvent(EVENT_DISCONNECTED,'connection closed');
+
   ConnectionID:='';
+
+  if KeepAlive then DoRecoveryConnection;
+
 end;
 
 procedure TCloudClient.OnClientConnect(Sender: TObject);
@@ -112,8 +176,14 @@ end;
 
 procedure TCloudClient.OnClientException(Sender: TObject);
 begin
-  Delegate.OnEvent(EVENT_ERROR,'error:'+Client.E.Message);
-  Workload:=False;
+
+  Delegate.OnEvent(EVENT_EXCEPT,Client.E.Message);
+
+  if KeepAlive then
+    DoRecoveryConnection
+  else
+    Workload:=False;
+
 end;
 
 procedure TCloudClient.OnClientRead(Sender: TObject);
@@ -145,12 +215,27 @@ end;
 procedure TCloudClient.Connect;
 begin
 
+  if Client.Connected then Exit;
+
   ReceiveString:='';
   Workload:=True;
 
   Delegate.OnEvent(EVENT_CONNECTING,'connecting... to '+Host+':'+Port.ToString);
 
   Client.Connect(Host,Port);
+
+end;
+
+procedure TCloudClient.Disconnect;
+begin
+
+  ReceiveString:='';
+  Workload:=False;
+
+  ConnectionID:='';
+  AccessToken:='';
+
+  Client.Disconnect;
 
 end;
 
@@ -208,25 +293,48 @@ begin
     Delegate.OnSendTo(Response)
   else
 
+  if Response.Command='_GetCrRatio' then
+    Delegate.OnRatio(Response)
+  else
+
+  if Response.Command='UForging' then
+    Delegate.OnRequestForging(Response)
+  else
+
+  if Response.Command='_UForging' then
+    Delegate.OnForging(Response)
+  else
+
 end;
 
-procedure TCloudClient.SendRequest(const Command,Args: string);
+procedure TCloudClient.SendRequest(const Command,Args: string; const ShowArgs: string='');
+var C,S: string;
+begin
+  C:=Command+' '+ConnectionID+' '+Args;
+  if ShowArgs='' then S:=C else S:=Command+' '+ConnectionID+' '+ShowArgs;
+  Delegate.OnEvent(EVENT_REQUEST,S);
+  Workload:=True;
+  Client.Send(C+#13);
+end;
+
+procedure TCloudClient.SendResponse(const Command,Args: string);
 var C: string;
 begin
   C:=Command+' '+ConnectionID+' '+Args;
   Delegate.OnEvent(EVENT_REQUEST,C);
+  Workload:=False;
   Client.Send(C+#13);
-  Workload:=True;
 end;
 
-procedure TCloudClient.SendRequestRegistration(const Email,Password: string);
+procedure TCloudClient.SendRequestRegistration(const Email,Password: string; AccountID: Int64);
 begin
-  SendRequest('RegLight',Email+' '+Password+' 1 '+Password);
+  SendRequest('RegLight',Email+' '+Password+' '+AccountID.ToString+' '+Password,
+    Email+' ****** '+AccountID.ToString+' ******');
 end;
 
 procedure TCloudClient.SendRequestLogin(const Email,Password: string);
 begin
-  SendRequest('CheckPW',Email+' '+Password+' ipa');
+  SendRequest('CheckPW',Email+' '+Password+' ipa',Email+' ****** ipa');
 end;
 
 procedure TCloudClient.SendRequestAddresses(const Port: string);
@@ -257,8 +365,26 @@ end;
 procedure TCloudClient.SendRequestSendTo(const Address: string; Amount: Extended;
   Confirm: Integer; const Port: string);
 begin
-  SendRequest('SendFromTo',AccessToken+' '+Address+' '+AmountToStr(Amount)+' '+
+  SendRequest('SendFromTo',AccessToken+' '+Address+' '+AmountToIStr(Amount)+' '+
     Confirm.ToString+' '+Port);
+end;
+
+procedure TCloudClient.SendRequestRatio();
+begin
+  SendRequest('GetCrRatio',AccessToken);
+end;
+
+procedure TCloudClient.SendRequestForging(Owner,BuyToken: Int64; const PayPort: string;
+  BuyAmount,PayAmount,Ratio,Commission1,Commission2: Extended);
+begin
+  SendRequest('UForging',AccessToken+' '+Owner.ToString+' '+BuyToken.ToString+' '+PayPort+' '+
+    AmountToIStr(BuyAmount)+' '+AmountToIStr(PayAmount)+' '+AmountToIStr(Ratio)+' '+
+    AmountToIStr(Commission1)+' '+AmountToIStr(Commission2));
+end;
+
+procedure TCloudClient.SendResponseForging(const Request,Result: string);
+begin
+  SendResponse('_UForging',{AccessToken+' '+}Request+' '+Result);
 end;
 
 end.
