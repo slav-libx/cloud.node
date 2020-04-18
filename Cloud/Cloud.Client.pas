@@ -305,6 +305,8 @@ begin
     Delegate.OnForging(Response)
   else
 
+    Delegate.OnError('* * 0');
+
 end;
 
 procedure TCloudClient.SendRequest(const Command,Args: string; const ShowArgs: string='');

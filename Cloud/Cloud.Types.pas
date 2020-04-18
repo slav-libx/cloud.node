@@ -217,6 +217,7 @@ end;
 function TCloudResponseError.ErrorString: string;
 begin
 
+  if Code='0' then Exit('unknown response');
   if Code='20' then Exit('not authorized');
   if Code='23' then Exit('invalid email');
   if Code='93' then Exit('wrong password');
