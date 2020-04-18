@@ -165,7 +165,7 @@ begin
   else
 
   if Args[0]='reg' then
-    CloudClient.SendRequestRegistration(Args[1],Args[2],StrToIntDef(Args[3],1))
+    CloudClient.SendRequestRegistration(Args[1],Args[2],StrToIntDef(Args[3],0))
   else
 
   if Args[0]='login' then
@@ -201,7 +201,7 @@ begin
   else
 
   if Args[0]='forg' then
-    CloudClient.SendRequestForging(21,GetToken(Args[1]),GetPort(Args[2]),25,0.0045,6456.543,1.00000,1.00000)
+    CloudClient.SendRequestForging(1,GetToken(Args[1]),GetPort(Args[2]),25,0.0001,6456.543,1.00000,1.00000)
   else
 
     DoPrintHelp('unknown command, use:');

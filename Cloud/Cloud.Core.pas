@@ -13,23 +13,27 @@ uses
   Cloud.Utils;
 
 type
+
+  TInfoProc = reference to procedure(const Info: TCloudResponseInfo);
+  TErrorProc = reference to procedure(const Error: TCloudResponseError);
+
   TCloudCore = class(TCloudDelegate)
-  private type
-    TRequest = (None,Login,Balance,Transfer,Ratio,Forging);
   private
     Client: TCloudClient;
-    Request: TRequest;
     FShowEventMessages: Boolean;
     procedure DoExcept(const Text: string);
-    function DoConnected: Boolean;
+    procedure DoConnection;
+    procedure ExecuteBeginProc;
   private
-    RegistrationProc: TProc;
-    LoginProc: TProc;
-    BalanceProc: TProc;
-    CreateAddressProc: TProc;
-    RatioProc: TProc;
-    TransferProc: TProc;
-    ForgingProc: TProc;
+    DoRegistrationProc: TProc;
+    DoLoginProc: TProc;
+    DoConnectProc: TProc;
+    DoBeginProc: TProc;
+    DoErrorProcDefault: TErrorProc;
+    DoErrorProc: TErrorProc;
+    DoInfoProc: TInfoProc;
+    DoCreateAddressProc: TProc;
+    DoSendToProc: TProc;
   private
     procedure OnEvent(Event: TCloudEvent; const Text: string); override;
     procedure OnInit(const Init: TCloudResponseInit); override;
@@ -69,8 +73,18 @@ implementation
 
 constructor TCloudCore.Create;
 begin
+
   Client:=TCloudClient.Create;
   Client.SetDelegate(Self);
+
+  DoErrorProcDefault:=procedure(const Error: TCloudResponseError)
+  begin
+    if Error.Code='816' then
+      DoRegistrationProc
+    else
+      DoExcept(Error.ErrorString);
+  end;
+
 end;
 
 constructor TCloudCore.Create(const Host: string; Port: Word);
@@ -95,31 +109,21 @@ begin
 
   ToLog('error:'+Text);
 
-  Request:=None;
-
   UI.WaitCancel;
-
   UI.ShowException(Text);
-
   UI.WaitUnlock;
 
 end;
 
-function TCloudCore.DoConnected: Boolean;
+procedure TCloudCore.DoConnection;
 begin
-
-  Result:=True;
 
   if not Client.Connected then
     Client.Connect
+  else if not Client.Authorized then
+    DoLoginProc
   else
-
-  if not Client.Authorized then
-
-    LoginProc
-
-  else
-    Result:=False;
+    ExecuteBeginProc;
 
 end;
 
@@ -133,7 +137,6 @@ begin
   case Event of
   EVENT_REQUEST: UI.ShowMessage('>'+Text);
   EVENT_RESPONSE: UI.ShowMessage('<'+Text);
-  EVENT_EXCEPT: UI.ShowMessage(Text);
   else UI.ShowMessage(Text);
   end;
 
@@ -141,67 +144,28 @@ end;
 
 procedure TCloudCore.OnError(const Error: TCloudResponseError);
 begin
-
   ToLog(Error);
-
-  if Error.Code='816' then RegistrationProc;
-
-  case Request of
-  Balance:
-
-    if Error.Code='780' then CreateAddressProc;
-
-  Transfer:
-  begin
-
-    if Error.Code='781' then DoExcept(Error.ErrorString);
-    if Error.Code='782' then DoExcept(Error.ErrorString);
-    if Error.Code='783' then DoExcept(Error.ErrorString);
-
-  end;
-
-  Ratio: ;
-
-  end;
-
+  DoErrorProc(Error);
 end;
 
 procedure TCloudCore.OnInit(const Init: TCloudResponseInit);
 begin
-  if Request<>None then LoginProc;
+  DoConnectProc;
 end;
 
 procedure TCloudCore.OnRegistration(const Registration: TCloudResponseRegistration);
 begin
-  LoginProc;
+  DoLoginProc;
 end;
 
 procedure TCloudCore.OnLogin(const Login: TCloudResponseLogin);
 begin
-
-  case Request of
-  TRequest.Login: UI.WaitUnlock;
-  Balance: BalanceProc;
-  Transfer: TransferProc;
-  Ratio: RatioProc;
-  Forging: ForgingProc;
-  end;
-
+  ExecuteBeginProc;
 end;
 
 procedure TCloudCore.OnInfo(const Info: TCloudResponseInfo);
 begin
-
-  case Request of
-  Balance,Transfer:
-  begin
-    Request:=None;
-    UI.WaitCancel;
-    AppCore.DoCloudBalance(Info.Address,Info.Amount,PortToSymbol(Info.Port));
-    UI.WaitUnlock;
-  end;
-  end;
-
+  DoInfoProc(Info);
 end;
 
 procedure TCloudCore.OnAddresses(const Addresses: TCloudResponseGetAddresses);
@@ -211,11 +175,7 @@ end;
 
 procedure TCloudCore.OnCreateAddress(const Address: TCloudResponseCreateAddress);
 begin
-
-  case Request of
-  Balance: BalanceProc;
-  end;
-
+  DoCreateAddressProc;
 end;
 
 procedure TCloudCore.OnTransactions(const Transactions: TCloudResponseTransactions);
@@ -230,17 +190,11 @@ end;
 
 procedure TCloudCore.OnSendTo(const SendTo: TCloudResponseSendTo);
 begin
-
-  case Request of
-  Transfer: BalanceProc;
-  end;
-
+  DoSendToProc;
 end;
 
 procedure TCloudCore.OnRatio(const Ratio: TCloudResponseRatio);
 begin
-
-  Request:=None;
 
   UI.WaitCancel;
 
@@ -276,19 +230,25 @@ end;
 procedure TCloudCore.OnForging(const Forging: TCloudResponseForging);
 begin
 
-  Request:=None;
-
-  UI.WaitCancel;
-
-  AppCore.DoCloudForgingResult(Forging.Tx);
-
-  UI.WaitUnlock;
+  if Forging.Result=1 then
+  begin
+    UI.WaitCancel;
+    AppCore.DoCloudForgingResult(Forging.Tx);
+    UI.WaitUnlock;
+  end else
+    DoExcept('error');
 
 end;
 
 procedure TCloudCore.Connect;
 begin
+
+  Cancel;
+
+  DoConnectProc:=procedure begin end;
+
   Client.Connect;
+
 end;
 
 procedure TCloudCore.Disconnect;
@@ -305,8 +265,17 @@ end;
 
 procedure TCloudCore.Cancel;
 begin
-  Request:=None;
+  DoBeginProc:=nil;
   Client.Cancel;
+end;
+
+procedure TCloudCore.ExecuteBeginProc;
+begin
+  if Assigned(DoBeginProc) then
+  begin
+    DoBeginProc;
+    DoBeginProc:=nil;
+  end;
 end;
 
 procedure TCloudCore.SetAuth(const Email,Password: string; AccountID: Int64);
@@ -314,12 +283,16 @@ begin
 
   Client.Unauthorized;
 
-  RegistrationProc:=procedure
+//  DoConnectProc:=DoLoginProc;
+
+//  DoErrorProc:=DoErrorProcDefault;
+
+  DoRegistrationProc:=procedure
   begin
     Client.SendRequestRegistration(Email,Password,AccountID);
   end;
 
-  LoginProc:=procedure
+  DoLoginProc:=procedure
   begin
     Client.SendRequestLogin(Email,Password);
   end;
@@ -339,11 +312,18 @@ begin
 
   Client.Unauthorized;
 
-  Request:=Login;
+  DoConnectProc:=DoLoginProc;
+
+  DoErrorProc:=DoErrorProcDefault;
+
+  DoBeginProc:=procedure
+  begin
+    UI.WaitUnlock;
+  end;
 
   UI.WaitLock;
 
-  DoConnected;
+  DoConnection;
 
 end;
 
@@ -353,29 +333,38 @@ begin
 
   ToLog('Execute request balance '+Symbol);
 
-  Request:=Balance;
-
   UI.WaitLock;
 
   Port:=SymbolToPort(Symbol);
 
-  BalanceProc:=procedure
+  DoConnectProc:=DoLoginProc;
+
+  DoErrorProc:=procedure(const Error: TCloudResponseError)
+  begin
+    if Error.Code='780' then
+      Client.SendRequestCreateAddress(Port)
+    else
+      DoErrorProcDefault(Error);
+  end;
+
+  DoBeginProc:=procedure
   begin
     Client.SendRequestInfo(Port);
   end;
 
-  CreateAddressProc:=procedure
+  DoCreateAddressProc:=DoBeginProc;
+
+  DoInfoProc:=procedure(const Info: TCloudResponseInfo)
   begin
-    Client.SendRequestCreateAddress(Port);
+    UI.WaitCancel;
+    AppCore.DoCloudBalance(Info.Address,Info.Amount,PortToSymbol(Info.Port,Symbol));
+    UI.WaitUnlock;
   end;
 
   if Port='' then
-
     DoExcept('forbidden coin')
-
   else
-
-    if not DoConnected then BalanceProc;
+    DoConnection;
 
 end;
 
@@ -385,29 +374,35 @@ begin
 
   ToLog('Execute request transfer '+AmountToStr(Amount)+' '+Symbol+' to '+ Address);
 
-  Request:=Transfer;
-
   UI.WaitLock;
 
   Port:=SymbolToPort(Symbol);
 
-  TransferProc:=procedure
+  DoConnectProc:=DoLoginProc;
+
+  DoErrorProc:=DoErrorProcDefault;
+
+  DoBeginProc:=procedure
   begin
     Client.SendRequestSendTo(Address,Amount,6,Port);
   end;
 
-  BalanceProc:=procedure
+  DoInfoProc:=procedure(const Info: TCloudResponseInfo)
+  begin
+    UI.WaitCancel;
+    AppCore.DoCloudBalance(Info.Address,Info.Amount,PortToSymbol(Info.Port,Symbol));
+    UI.WaitUnlock;
+  end;
+
+  DoSendToProc:=procedure
   begin
     Client.SendRequestInfo(Port);
   end;
 
   if Port='' then
-
     DoExcept('forbidden coin')
-
   else
-
-    if not DoConnected then TransferProc;
+    DoConnection;
 
 end;
 
@@ -416,16 +411,18 @@ begin
 
   ToLog('Execute request ratio');
 
-  Request:=Ratio;
-
   UI.WaitLock;
 
-  RatioProc:=procedure
+  DoConnectProc:=DoLoginProc;
+
+  DoErrorProc:=DoErrorProcDefault;
+
+  DoBeginProc:=procedure
   begin
     Client.SendRequestRatio;
   end;
 
-  if not DoConnected then RatioProc;
+  DoConnection;
 
 end;
 
@@ -437,27 +434,24 @@ begin
   ToLog('Execute request forging TokenID='+TokenID.ToString+' '+AmountToStr(BuyAmount)+' '+
     AmountToStr(PayAmount)+' '+Symbol+' to AccountID='+Owner.ToString);
 
-  Request:=Forging;
-
   UI.WaitLock;
 
   Port:=SymbolToPort(Symbol);
 
-  ForgingProc:=procedure
-  begin
+  DoConnectProc:=DoLoginProc;
 
+  DoErrorProc:=DoErrorProcDefault;
+
+  DoBeginProc:=procedure
+  begin
     Client.SendRequestForging(Owner,TokenID,Port,BuyAmount,PayAmount,Ratio,
       Commission1,Commission2);
-
   end;
 
   if Port='' then
-
     DoExcept('forbidden coin')
-
   else
-
-    if not DoConnected then ForgingProc;
+    DoConnection;
 
 end;
 

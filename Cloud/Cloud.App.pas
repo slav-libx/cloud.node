@@ -5,6 +5,7 @@ interface
 uses
   System.Console,
   System.Classes,
+  System.SysUtils,
   App.Intf,
   Cloud.Utils,
   Cloud.Core;
@@ -46,8 +47,9 @@ begin
 
   CloudCore.ShowEventMessages:=True;
 
-  //CloudCore.SetAuth('xxx@1.com','xxx');
-  CloudCore.SetAuth('genesis4@users.dev','0',1);
+  CloudCore.SetAuth('xxx@1.com','xxx',0);
+  //CloudCore.SetAuth('genesis48@users.dev','0',1);
+  //CloudCore.SetAuth('','',1);
 
 end;
 
@@ -159,10 +161,7 @@ begin
 
     13:;
 
-    55: begin
-        CloudCore.Cancel;
-        CloudCore.Connect;
-        end;
+    55: CloudCore.Connect;
 
     56: CloudCore.Disconnect;
 
@@ -172,11 +171,11 @@ begin
 
     50: DoCloudRequestBalance('BTC');
 
-    51: DoCloudRequestTransfer('BTC','2MyFRtCHMTzy5vALF1EKzDe5r5EdytcFkAz',0.00001);
+    51: DoCloudRequestTransfer('BTC','2MzReLLxWt5a3Zsgq6hrvXTCg3xDXdHpqfe',0.00001);
 
     52: DoCloudRequestRatio;
 
-    53: DoCloudRequestForging('RLC','BTC',25,0.0045,6456.543,0);
+    53: DoCloudRequestForging('RLC','BTC',25,0.00001,6456.543,0);
 
     else Break;
     end;

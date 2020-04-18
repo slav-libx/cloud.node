@@ -10,7 +10,7 @@ uses
 function StrToAmount(const S: string): Extended;
 function StrToAmountDef(const S: string; Default: Extended): Extended;
 function AmountToStr(Amount: Extended): string;
-function AmountToIStr(Amount: Extended): string;
+function AmountToStrI(Amount: Extended): string;
 function SymbolToPort(const Symbol: string; const Default: string=''): string;
 function PortToSymbol(const Port: string; const Default: string=''): string;
 function Skip(const S: string; const SkipChars: array of Char; Count: Integer): string;
@@ -35,7 +35,7 @@ begin
   Result:=FormatFloat('0.00######',Amount);
 end;
 
-function AmountToIStr(Amount: Extended): string;
+function AmountToStrI(Amount: Extended): string;
 begin
   Result:=FormatFloat('0.00######',Amount,FormatSettings.Invariant);
 end;

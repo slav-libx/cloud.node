@@ -297,7 +297,7 @@ begin
     Delegate.OnRatio(Response)
   else
 
-  if Response.Command='UForging' then
+  if Response.Command='UForging2' then
     Delegate.OnRequestForging(Response)
   else
 
@@ -365,7 +365,7 @@ end;
 procedure TCloudClient.SendRequestSendTo(const Address: string; Amount: Extended;
   Confirm: Integer; const Port: string);
 begin
-  SendRequest('SendFromTo',AccessToken+' '+Address+' '+AmountToIStr(Amount)+' '+
+  SendRequest('SendFromTo',AccessToken+' '+Address+' '+AmountToStrI(Amount)+' '+
     Confirm.ToString+' '+Port);
 end;
 
@@ -378,13 +378,13 @@ procedure TCloudClient.SendRequestForging(Owner,BuyToken: Int64; const PayPort: 
   BuyAmount,PayAmount,Ratio,Commission1,Commission2: Extended);
 begin
   SendRequest('UForging',AccessToken+' '+Owner.ToString+' '+BuyToken.ToString+' '+PayPort+' '+
-    AmountToIStr(BuyAmount)+' '+AmountToIStr(PayAmount)+' '+AmountToIStr(Ratio)+' '+
-    AmountToIStr(Commission1)+' '+AmountToIStr(Commission2));
+    AmountToStrI(BuyAmount)+' '+AmountToStrI(PayAmount)+' '+AmountToStrI(Ratio)+' '+
+    AmountToStrI(Commission1)+' '+AmountToStrI(Commission2));
 end;
 
 procedure TCloudClient.SendResponseForging(const Request,Result: string);
 begin
-  SendResponse('_UForging',{AccessToken+' '+}Request+' '+Result);
+  SendResponse('_UForging2',AccessToken+' <'+Request+'> '+Result);
 end;
 
 end.

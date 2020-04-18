@@ -141,6 +141,7 @@ type
 
   TCloudResponseForging = record
     Tx: string;
+    Result: Integer;
     class operator Implicit(const S: string): TCloudResponseForging;
     class operator Implicit(const Forging: TCloudResponseForging): string;
     class operator Implicit(const Response: TCloudResponse): TCloudResponseForging;
@@ -559,9 +560,9 @@ begin
 
   Result:=Default(TCloudResponseRatio);
 
-  if L>0 then Result.RatioBTC:=StrToAmountDef(Args[1],0);
-  if L>1 then Result.RatioLTC:=StrToAmountDef(Args[2],0);
-  if L>2 then Result.RatioETH:=StrToAmountDef(Args[3],0);
+  if L>1 then Result.RatioBTC:=StrToAmountDef(Args[1],0);
+  if L>2 then Result.RatioLTC:=StrToAmountDef(Args[2],0);
+  if L>3 then Result.RatioETH:=StrToAmountDef(Args[3],0);
 
 end;
 
@@ -586,7 +587,7 @@ var
   L: Integer;
 begin
 
-  // U15 ipa0K0tcMwAcPfJ3fBV3lqFBYicawTSW1r 21 2 18332 25 0.0045 6456.543 1.00000 1.00000
+  // U2 * ipaSmp9xou4UhksvmK9iBxFXb0WcerHd8C 21 1 18332 25.00 0.000045 6456.543 0.00 0.00 12
 
   Args:=S.Split([' '],'<','>');
 
@@ -594,17 +595,17 @@ begin
 
   Result:=Default(TCloudRequestForging);
 
-  Result.Request:=Skip(S,[' '],1);
+  Result.Request:=Skip(S,[' '],2);
 
-  if L>1 then Result.Owner:=StrToInt64Def(Args[2],0);
-  if L>2 then Result.BuyToken:=StrToInt64Def(Args[3],0);
-  if L>3 then Result.PayPort:=Args[4];
-  if L>4 then Result.BuyAmount:=StrToAmountDef(Args[5],0);
-  if L>5 then Result.PayAmount:=StrToAmountDef(Args[6],0);
-  if L>6 then Result.Ratio:=StrToAmountDef(Args[7],0);
-  if L>7 then Result.Commission1:=StrToAmountDef(Args[8],0);
-  if L>8 then Result.Commission2:=StrToAmountDef(Args[9],0);
-  if L>9 then Result.Buyer:=StrToInt64Def(Args[10],0);
+  if L>3 then Result.Owner:=StrToInt64Def(Args[3],0);
+  if L>4 then Result.BuyToken:=StrToInt64Def(Args[4],0);
+  if L>5 then Result.PayPort:=Args[5];
+  if L>6 then Result.BuyAmount:=StrToAmountDef(Args[6],0);
+  if L>7 then Result.PayAmount:=StrToAmountDef(Args[7],0);
+  if L>8 then Result.Ratio:=StrToAmountDef(Args[8],0);
+  if L>9 then Result.Commission1:=StrToAmountDef(Args[9],0);
+  if L>10 then Result.Commission2:=StrToAmountDef(Args[10],0);
+  if L>11 then Result.Buyer:=StrToInt64Def(Args[11],0);
 
 end;
 
@@ -628,7 +629,7 @@ var
   L: Integer;
 begin
 
-  //
+  // U14 * 1
 
   Args:=S.Split([' '],'<','>');
 
@@ -636,13 +637,14 @@ begin
 
   Result:=Default(TCloudResponseForging);
 
-  if L>1 then Result.Tx:=Args[2];
+  if L>2 then Result.Result:=StrToInt(Args[2]);
+  if L>3 then Result.Tx:=Args[3];
 
 end;
 
 class operator TCloudResponseForging.Implicit(const Forging: TCloudResponseForging): string;
 begin
-  Result:=Forging.Tx;
+  Result:=Forging.Result.ToString;
 end;
 
 class operator TCloudResponseForging.Implicit(const Response: TCloudResponse): TCloudResponseForging;
