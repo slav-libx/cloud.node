@@ -198,9 +198,7 @@ begin
 
   UI.WaitCancel;
 
-  AppCore.DoCloudRatio('BTC',Ratio.RatioBTC);
-  AppCore.DoCloudRatio('LTC',Ratio.RatioLTC);
-  AppCore.DoCloudRatio('ETH',Ratio.RatioETH);
+  AppCore.DoCloudRatio(Ratio.RatioBTC,Ratio.RatioLTC,Ratio.RatioETH);
 
   UI.WaitUnlock;
 

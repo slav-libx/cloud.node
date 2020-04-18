@@ -27,7 +27,7 @@ type
     procedure DoCloudBalance(const Address: string; Amount: Extended; const Symbol: string);
     procedure DoCloudRequestTransfer(const Symbol,Address: string; Amount: Extended);
     procedure DoCloudRequestRatio;
-    procedure DoCloudRatio(const Symbol: string; Ratio: Extended);
+    procedure DoCloudRatio(RatioBTC,RatioLTC,RatioETH: Extended);
     procedure DoForging(Owner,Buyer,Token: Int64; Amount,Commission1,Commission2: Extended);
     procedure DoCloudRequestForging(const TokenSymbol,CryptoSymbol: string;
       TokenAmount,CryptoAmount,CryptoRatio,Commission: Extended);
@@ -97,9 +97,11 @@ begin
   Writeln('tx='+Tx);
 end;
 
-procedure TCloudApp.DoCloudRatio(const Symbol: string; Ratio: Extended);
+procedure TCloudApp.DoCloudRatio(RatioBTC,RatioLTC,RatioETH: Extended);
 begin
-  Writeln('Rate '+Symbol+'='+AmountToStr(Ratio));
+  Writeln('Rate BTC='+AmountToStr(RatioBTC));
+  Writeln('Rate LTC='+AmountToStr(RatioLTC));
+  Writeln('Rate ETH='+AmountToStr(RatioETH));
 end;
 
 procedure TCloudApp.ShowException(const AMessage: string);

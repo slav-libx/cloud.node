@@ -16,7 +16,7 @@ type
     procedure DoCloudBalance(const Address: string; Amount: Extended; const Symbol: string);
     procedure DoCloudRequestTransfer(const Symbol,Address: string; Amount: Extended);
     procedure DoCloudRequestRatio;
-    procedure DoCloudRatio(const Symbol: string; Ratio: Extended);
+    procedure DoCloudRatio(RatioBTC,RatioLTC,RatioETH: Extended);
     procedure DoForging(Owner,Buyer,Token: Int64; Amount,Commission1,Commission2: Extended);
     procedure DoCloudRequestForging(const TokenSymbol,CryptoSymbol: string;
       TokenAmount,CryptoAmount,CryptoRatio,Commission: Extended);
