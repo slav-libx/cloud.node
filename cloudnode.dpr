@@ -20,7 +20,7 @@ uses
   Cloud.Log in 'Cloud\Cloud.Log.pas',
   Cloud.App in 'Cloud\Cloud.App.pas';
 
-{ $DEFINE CLOUD}
+{$DEFINE CLOUD}
 
 {$IFDEF CLOUD}
 

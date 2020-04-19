@@ -85,6 +85,8 @@ begin
       DoExcept(Error.ErrorString);
   end;
 
+  SetAuth('','',0);
+
 end;
 
 constructor TCloudCore.Create(const Host: string; Port: Word);
@@ -281,9 +283,9 @@ begin
 
   Client.Unauthorized;
 
-//  DoConnectProc:=DoLoginProc;
+  DoConnectProc:=DoLoginProc;
 
-//  DoErrorProc:=DoErrorProcDefault;
+  DoErrorProc:=DoErrorProcDefault;
 
   DoRegistrationProc:=procedure
   begin
