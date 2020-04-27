@@ -28,6 +28,7 @@ type
     function GetConnected: Boolean;
     function GetAuthorized: Boolean;
     function GetReady: Boolean;
+    function GetAccessToken: string;
     procedure DoResponse(const S: string);
     procedure DoRecoveryConnection;
     procedure SendRequest(const Command,Args: string; const ShowArgs: string='');
@@ -50,6 +51,7 @@ type
     procedure Disconnect;
     procedure Unauthorized;
     procedure Cancel;
+    procedure SendRequestRaw(const Command: string);
     procedure SendRequestRegistration(const Email,Password: string; AccountID: Int64);
     procedure SendRequestLogin(const Email,Password: string);
     procedure SendRequestAddresses(const Port: string);
@@ -60,9 +62,21 @@ type
     procedure SendRequestSendTo(const Address: string; Amount: Extended;
       Confirm: Integer; const Port: string);
     procedure SendRequestRatio();
-    procedure SendRequestForging(Owner,BuyToken: Int64; const PayPort: string;
+    procedure SendRequestForging(Owner,SymbolID: Integer; const PayPort: string;
       BuyAmount,PayAmount,Ratio,Commission1,Commission2: Extended);
     procedure SendResponseForging(const Request,Result: string);
+    procedure SendResponseAccountBalance(const Balances: string);
+    procedure SendRequestCreateOffer(Direction,Coin1,Coin2: Integer;
+      Amount,Ratio: Extended; EndDate: TDateTime);
+    procedure SendRequestOffers(SymbolID1,SymbolID2: Integer);
+    procedure SendRequestOfferAccount;
+    procedure SendResponseTransfer;
+    procedure SendResponseError(Code: Integer; const Text: string='');
+    procedure SendRequestKillOffer(OfferID: Int64);
+    procedure SendRequestActiveOffers;
+    procedure SendRequestClosedOffers(BeginDate,EndDate: TDateTime);
+    procedure SendRequestHistoryOffers(BeginDate,EndDate: TDateTime);
+    procedure SendRequestPairsSummary;
     property Workloaded: Boolean read Workload;
     property Ready: Boolean read GetReady;
     property Connected: Boolean read GetConnected;
@@ -131,6 +145,12 @@ end;
 function TCloudClient.GetReady: Boolean;
 begin
   Result:=Connected and Authorized;
+end;
+
+function TCloudClient.GetAccessToken: string;
+begin
+  Result:=AccessToken;
+  if Result.IsEmpty then Result:='*';
 end;
 
 procedure TCloudClient.Unauthorized;
@@ -305,6 +325,50 @@ begin
     Delegate.OnForging(Response)
   else
 
+  if Response.Command='GetAccountBalance' then
+    Delegate.OnRequestAccountBalance(Response)
+  else
+
+  if Response.Command='_CreateOffer' then
+    Delegate.OnCreateOffer(Response)
+  else
+
+  if Response.Command='_GetOffersD' then
+    Delegate.OnOffers(Response)
+  else
+
+  if Response.Command='_GetOfferAccount' then
+    Delegate.OnOfferAccount(Response)
+  else
+
+  if Response.Command='UTransfer' then
+    Delegate.OnRequestTransfer(Response)
+  else
+
+  if Response.Command='_UTransfer' then
+    // Delegate.
+  else
+
+  if Response.Command='_KillOffer' then
+    Delegate.OnKillOffer(Response)
+  else
+
+  if Response.Command='_GetActiveOffers' then
+    Delegate.OnActiveOffers(Response)
+  else
+
+  if Response.Command='_GetClosedOffers' then
+    Delegate.OnClosedOffers(Response)
+  else
+
+  if Response.Command='_GetHistoryOffers' then
+    Delegate.OnHistoryOffers(Response)
+  else
+
+  if Response.Command='_GetPairsSummary' then
+    Delegate.OnPairsSummary(Response)
+  else
+
     Delegate.OnError('* * 0');
 
 end;
@@ -328,6 +392,13 @@ begin
   Client.Send(C+#13);
 end;
 
+procedure TCloudClient.SendRequestRaw(const Command: string);
+var Request: TCloudRequest;
+begin
+  Request:=Command;
+  SendRequest(Request.Command,GetAccessToken+' '+Request.Args);
+end;
+
 procedure TCloudClient.SendRequestRegistration(const Email,Password: string; AccountID: Int64);
 begin
   SendRequest('RegLight',Email+' '+Password+' '+AccountID.ToString+' '+Password,
@@ -341,52 +412,121 @@ end;
 
 procedure TCloudClient.SendRequestAddresses(const Port: string);
 begin
-  SendRequest('GetCloudAdreses',AccessToken+' * '+Port);
+  SendRequest('GetCloudAdreses',GetAccessToken+' * '+Port);
 end;
 
 procedure TCloudClient.SendRequestTransactions(const Port: string);
 begin
-  SendRequest('listtransactions',AccessToken+' * '+Port);
+  SendRequest('listtransactions',GetAccessToken+' * '+Port);
 end;
 
 procedure TCloudClient.SendRequestCreateAddress(const Port: string);
 begin
-  SendRequest('CreateNewAdres',AccessToken+' * '+Port);
+  SendRequest('CreateNewAdres',GetAccessToken+' * '+Port);
 end;
 
 procedure TCloudClient.SendRequestAddress();
 begin
-  SendRequest('GetCurAddresses',AccessToken);
+  SendRequest('GetCurAddresses',GetAccessToken);
 end;
 
 procedure TCloudClient.SendRequestInfo(const Port: string);
 begin
-  SendRequest('GetWaletFullInfo',AccessToken+' * '+Port);
+  SendRequest('GetWaletFullInfo',GetAccessToken+' * '+Port);
 end;
 
 procedure TCloudClient.SendRequestSendTo(const Address: string; Amount: Extended;
   Confirm: Integer; const Port: string);
 begin
-  SendRequest('SendFromTo',AccessToken+' '+Address+' '+AmountToStrI(Amount)+' '+
+  SendRequest('SendFromTo',GetAccessToken+' '+Address+' '+AmountToStrI(Amount)+' '+
     Confirm.ToString+' '+Port);
 end;
 
 procedure TCloudClient.SendRequestRatio();
 begin
-  SendRequest('GetCrRatio',AccessToken);
+  SendRequest('GetCrRatio',GetAccessToken);
 end;
 
-procedure TCloudClient.SendRequestForging(Owner,BuyToken: Int64; const PayPort: string;
+procedure TCloudClient.SendRequestForging(Owner,SymbolID: Integer; const PayPort: string;
   BuyAmount,PayAmount,Ratio,Commission1,Commission2: Extended);
 begin
-  SendRequest('UForging',AccessToken+' '+Owner.ToString+' '+BuyToken.ToString+' '+PayPort+' '+
+  SendRequest('UForging',GetAccessToken+' '+Owner.ToString+' '+SymbolID.ToString+' '+PayPort+' '+
     AmountToStrI(BuyAmount)+' '+AmountToStrI(PayAmount)+' '+AmountToStrI(Ratio)+' '+
     AmountToStrI(Commission1)+' '+AmountToStrI(Commission2));
 end;
 
 procedure TCloudClient.SendResponseForging(const Request,Result: string);
 begin
-  SendResponse('_UForging2',AccessToken+' <'+Request+'> '+Result);
+  SendResponse('_UForging2',GetAccessToken+' <'+Request+'> '+Result);
+end;
+
+procedure TCloudClient.SendResponseAccountBalance(const Balances: string);
+begin
+  SendResponse('_GetAccountBalance',GetAccessToken+' '+Balances);
+end;
+
+procedure TCloudClient.SendRequestCreateOffer(Direction,Coin1,Coin2: Integer;
+  Amount,Ratio: Extended; EndDate: TDateTime);
+begin
+  SendRequest('CreateOffer',GetAccessToken+' 1 '+Direction.ToString+' '+Coin1.ToString+' '+
+    Coin2.ToString+' '+AmountToStrI(Amount)+' '+AmountToStrI(Ratio)+' '+DateTimeToUnix(EndDate,False).ToString);
+end;                                                                    // False - local date to UTC
+
+function DefValue(Value: Integer; Default: string='*'): string;
+begin
+  if Value=0 then Result:=Default else Result:=Value.ToString;
+end;
+
+procedure TCloudClient.SendRequestOffers(SymbolID1,SymbolID2: Integer);
+begin
+  SendRequest('GetOffersD',GetAccessToken+' '+DefValue(SymbolID1)+' '+DefValue(SymbolID2));
+end;
+
+procedure TCloudClient.SendRequestOfferAccount;
+begin
+  SendRequest('GetOfferAccount',GetAccessToken);
+end;
+
+procedure TCloudClient.SendResponseTransfer;
+begin
+  SendResponse('_UTransfer',GetAccessToken);
+end;
+
+function Join(Condition: Boolean; const S: string): string;
+begin
+  if Condition then Result:=S else Result:='';
+end;
+
+procedure TCloudClient.SendResponseError(Code: Integer; const Text: string);
+begin
+  SendResponse('URKError',GetAccessToken+' '+Code.ToString+Join(not Text.IsEmpty,' "'+Text+'"'));
+end;
+
+procedure TCloudClient.SendRequestKillOffer(OfferID: Int64);
+begin
+  SendRequest('KillOffer',GetAccessToken+' '+OfferID.ToString);
+end;
+
+procedure TCloudClient.SendRequestActiveOffers;
+begin
+  SendRequest('GetActiveOffers',GetAccessToken);
+end;
+
+procedure TCloudClient.SendRequestClosedOffers(BeginDate,EndDate: TDateTime);
+begin
+  SendRequest('GetClosedOffers',GetAccessToken+' '+DateTimeToUnix(BeginDate,False).ToString+' '+
+    DateTimeToUnix(EndDate,False).ToString);
+end;
+
+procedure TCloudClient.SendRequestHistoryOffers(BeginDate,EndDate: TDateTime);
+begin
+  SendRequest('GetHistoryOffers',GetAccessToken+' '+DateTimeToUnix(BeginDate,False).ToString+' '+
+    DateTimeToUnix(EndDate,False).ToString);
+end;
+
+procedure TCloudClient.SendRequestPairsSummary;
+begin
+  SendRequest('GetPairsSummary',GetAccessToken);
 end;
 
 end.

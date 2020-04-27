@@ -11,6 +11,9 @@ const
   PORT_LIGHTCOIN = '19332';
   PORT_ETHEREUM = '5555';
 
+  DIRECTION_BUY = 1;
+  DIRECTION_SELL = 2;
+
 implementation
 
 end.

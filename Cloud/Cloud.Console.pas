@@ -28,6 +28,15 @@ type
     procedure OnRatio(const Ratio: TCloudResponseRatio); override;
     procedure OnRequestForging(const Forging: TCloudRequestForging); override;
     procedure OnForging(const Forging: TCloudResponseForging); override;
+    procedure OnRequestAccountBalance(const AccountBalance: TCloudRequestAccountBalance); override;
+    procedure OnCreateOffer(const Offer: TCloudResponseCreateOffer); override;
+    procedure OnOffers(const Offers: TCloudResponseOffers); override;
+    procedure OnOfferAccount(const Account: TCloudResponseOfferAccount); override;
+    procedure OnKillOffer(const Offer: TCloudResponseKillOffer); override;
+    procedure OnActiveOffers(const Offers: TCloudResponseOffers); override;
+    procedure OnClosedOffers(const Offers: TCloudResponseOffers); override;
+    procedure OnHistoryOffers(const Offers: TCloudResponseOffers); override;
+    procedure OnPairsSummary(const Pairs: TCloudResponsePairs); override;
   public
     constructor Create(CloudClient: TCloudClient);
     function DoConsoleCommand(const Command: string): Boolean;
@@ -123,6 +132,53 @@ begin
   Writeln('tx:'+Forging.Tx);
 end;
 
+procedure TCloudConsole.OnRequestAccountBalance(const AccountBalance: TCloudRequestAccountBalance);
+begin
+  Writeln('request account balance: args='+AccountBalance.Args);
+  CloudClient.SendResponseAccountBalance(AmountToStrI(340.2)+' '+AmountToStrI(10.705));
+end;
+
+
+procedure TCloudConsole.OnCreateOffer(const Offer: TCloudResponseCreateOffer);
+begin
+  Writeln(string(Offer));
+end;
+
+procedure TCloudConsole.OnOffers(const Offers: TCloudResponseOffers);
+begin
+  for var O in Offers.Offers do Writeln(string(O));
+end;
+
+procedure TCloudConsole.OnOfferAccount(const Account: TCloudResponseOfferAccount);
+begin
+  Writeln('offer account='+Account.AccountID.ToString);
+end;
+
+procedure TCloudConsole.OnKillOffer(const Offer: TCloudResponseKillOffer);
+begin
+  Writeln(string(Offer));
+end;
+
+procedure TCloudConsole.OnActiveOffers(const Offers: TCloudResponseOffers);
+begin
+  for var O in Offers.Offers do Writeln(string(O));
+end;
+
+procedure TCloudConsole.OnClosedOffers(const Offers: TCloudResponseOffers);
+begin
+  for var O in Offers.Offers do Writeln(string(O));
+end;
+
+procedure TCloudConsole.OnHistoryOffers(const Offers: TCloudResponseOffers);
+begin
+  for var O in Offers.Offers do Writeln(string(O));
+end;
+
+procedure TCloudConsole.OnPairsSummary(const Pairs: TCloudResponsePairs);
+begin
+  for var P in Pairs.Pairs do Writeln(string(P));
+end;
+
 procedure TCloudConsole.DoPrintHelp(const Title: string);
 begin
   Writeln(Title);
@@ -136,6 +192,14 @@ begin
   Writeln('send <btc|ltc|eth> <address> <amount> '#9'- send coins to address');
   Writeln('ratio'#9#9#9#9#9'- get USD ratio coins');
   Writeln('forg <rlc|gtn> <btc|ltc|eth>'#9#9'- forging');
+  Writeln('cof <b|s> <btc|ltc|eth|rlc|gtn> <btc|ltc|eth|rlc|gtn> <amount> <ratio>'#9#9'- create offer');
+  Writeln('of <btc|ltc|eth|rlc|gtn> <btc|ltc|eth|rlc|gtn>'#9#9#9#9#9'- list offers');
+  Writeln('ca'#9#9#9#9#9'- get offer account');
+  Writeln('aaof'#9#9#9#9#9'- get active account offers');
+  Writeln('acof <begin date> <end date>'#9#9'- get closed account offers');
+  Writeln('ahof <begin date> <end date>'#9#9'- get history account offers');
+  Writeln('cp'#9#9#9#9#9'- show pairs summary');
+  Writeln('raw <Command>'#9#9#9#9'- execute any command');
   Writeln('exit'#9#9#9#9#9'- terminated');
 end;
 
@@ -144,9 +208,9 @@ begin
   Result:=SymbolToPort(Symbol,PORT_BITCOIN);
 end;
 
-function GetToken(const Symbol: string): Integer;
+function GetDate(const S: string; Default: TDateTime): TDateTime;
 begin
-  Result:=Map(Symbol,['rlc','gtn'],['1','2'],'1').ToInteger;
+  Result:=StrToDateTimeDef(S,Default);
 end;
 
 function TCloudConsole.DoConsoleCommand(const Command: string): Boolean;
@@ -162,6 +226,10 @@ begin
 
   if Command='exit' then
     Exit(False)
+  else
+
+  if Args[0]='raw' then
+    CloudClient.SendRequestRaw(Skip(Command,[' '],1))
   else
 
   if Args[0]='reg' then
@@ -201,7 +269,35 @@ begin
   else
 
   if Args[0]='forg' then
-    CloudClient.SendRequestForging(1,GetToken(Args[1]),GetPort(Args[2]),25,0.0001,6456.543,1.00000,1.00000)
+    CloudClient.SendRequestForging(1,SymbolID(Args[1],1),GetPort(Args[2]),25,0.0001,6456.543,1.00000,1.00000)
+  else
+
+  if Args[0]='cof' then
+    CloudClient.SendRequestCreateOffer(Map(Args[1],['b','s'],['1','2'],'1').ToInteger,SymbolID(Args[2]),SymbolID(Args[3]),StrToAmount(Args[4]),StrToAmount(Args[5]),Now+20)
+  else
+
+  if Args[0]='ca' then
+    CloudClient.SendRequestOfferAccount
+  else
+
+  if Args[0]='of' then
+    CloudClient.SendRequestOffers(SymbolID(Args[1]),SymbolID(Args[2]))
+  else
+
+  if Args[0]='aaof' then
+    CloudClient.SendRequestActiveOffers
+  else
+
+  if Args[0]='acof' then
+    CloudClient.SendRequestClosedOffers(GetDate(Args[1],Date-10),GetDate(Args[2],Date))
+  else
+
+  if Args[0]='ahof' then
+    CloudClient.SendRequestHistoryOffers(GetDate(Args[1],Date-10),GetDate(Args[2],Date))
+  else
+
+  if Args[0]='cp' then
+    CloudClient.SendRequestPairsSummary
   else
 
     DoPrintHelp('unknown command, use:');

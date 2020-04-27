@@ -18,7 +18,8 @@ uses
   Cloud.Utils in 'Cloud\Cloud.Utils.pas',
   App.Intf in 'Cloud\App.Intf.pas',
   Cloud.Log in 'Cloud\Cloud.Log.pas',
-  Cloud.App in 'Cloud\Cloud.App.pas';
+  Cloud.App in 'Cloud\Cloud.App.pas',
+  DEX.Types in 'Cloud\DEX.Types.pas';
 
 {$DEFINE CLOUD}
 
@@ -53,6 +54,8 @@ begin
 
   CloudCore:=TCloudConsole.Create(Client);
 
+//  Client.SetEndPoint('localhost',8765);
+
   Client.Connect;
 
   repeat
@@ -67,7 +70,11 @@ begin
       Dec(C);
     end;
 
-    if C=0 then Writeln('no response');
+    if C=0 then
+    begin
+      Writeln('no response');
+      Client.Cancel;
+    end;
 
     if not Client.Connected then
     begin
