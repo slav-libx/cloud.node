@@ -135,7 +135,7 @@ end;
 procedure TCloudConsole.OnRequestAccountBalance(const AccountBalance: TCloudRequestAccountBalance);
 begin
   Writeln('request account balance: args='+AccountBalance.Args);
-  CloudClient.SendResponseAccountBalance(AmountToStrI(340.2)+' '+AmountToStrI(10.705));
+  CloudClient.SendResponseAccountBalance(340.2,10.705);
 end;
 
 

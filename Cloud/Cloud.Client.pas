@@ -65,7 +65,7 @@ type
     procedure SendRequestForging(Owner,SymbolID: Integer; const PayPort: string;
       BuyAmount,PayAmount,Ratio,Commission1,Commission2: Extended);
     procedure SendResponseForging(const Request,Result: string);
-    procedure SendResponseAccountBalance(const Balances: string);
+    procedure SendResponseAccountBalance(AmountRLC,AmountGTN: Extended);
     procedure SendRequestCreateOffer(Direction,Coin1,Coin2: Integer;
       Amount,Ratio: Extended; EndDate: TDateTime);
     procedure SendRequestOffers(SymbolID1,SymbolID2: Integer);
@@ -460,9 +460,10 @@ begin
   SendResponse('_UForging2',GetAccessToken+' <'+Request+'> '+Result);
 end;
 
-procedure TCloudClient.SendResponseAccountBalance(const Balances: string);
+procedure TCloudClient.SendResponseAccountBalance(AmountRLC,AmountGTN: Extended);
 begin
-  SendResponse('_GetAccountBalance',GetAccessToken+' '+Balances);
+  SendResponse('_GetAccountBalance',GetAccessToken+' '+AmountToStrI(AmountRLC)+' '+
+    AmountToStrI(AmountGTN));
 end;
 
 procedure TCloudClient.SendRequestCreateOffer(Direction,Coin1,Coin2: Integer;

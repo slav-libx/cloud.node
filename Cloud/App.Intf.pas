@@ -24,7 +24,6 @@ type
     procedure DoCloudRequestForging(const TokenSymbol,CryptoSymbol: string;
       TokenAmount,CryptoAmount,CryptoRatio,Commission: Extended);
     procedure DoCloudForgingResult(const Tx: string);
-    procedure DoCloudResponseBalance;
     procedure DoCloudRequestCreateOffer(Direction: Integer; const Symbol1,Symbol2: string;
       Amount,Ratio: Extended; EndDate: TDateTime);
     procedure DoCloudCreateOffer(const OfferID: string);

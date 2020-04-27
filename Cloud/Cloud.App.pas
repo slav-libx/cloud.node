@@ -33,7 +33,6 @@ type
     procedure DoCloudRequestForging(const TokenSymbol,CryptoSymbol: string;
       TokenAmount,CryptoAmount,CryptoRatio,Commission: Extended);
     procedure DoCloudForgingResult(const Tx: string);
-    procedure DoCloudResponseBalance;
     procedure DoCloudRequestCreateOffer(Direction: Integer; const Symbol1,Symbol2: string;
       Amount,Ratio: Extended; EndDate: TDateTime);
     procedure DoCloudRequestOffers(const Symbol1,Symbol2: string);
@@ -119,11 +118,6 @@ begin
   Writeln('Rate BTC='+AmountToStr(RatioBTC));
   Writeln('Rate LTC='+AmountToStr(RatioLTC));
   Writeln('Rate ETH='+AmountToStr(RatioETH));
-end;
-
-procedure TCloudApp.DoCloudResponseBalance;
-begin
-  CloudCore.SendResponseBalance(12,56);
 end;
 
 procedure TCloudApp.DoCloudRequestCreateOffer(Direction: Integer; const Symbol1,Symbol2: string;
@@ -241,7 +235,7 @@ function TCloudApp.GetSymbolBalance(const Symbol: string): Extended;
 begin
   Result:=0;
   if Symbol='RLC' then Exit(100);
-  if Symbol='GNT' then Exit(100);
+  if Symbol='GTN' then Exit(76);
 end;
 
 procedure TCloudApp.ShowException(const AMessage: string);

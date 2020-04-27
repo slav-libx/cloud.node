@@ -91,7 +91,6 @@ type
     procedure SendRequestRatio;
     procedure SendRequestForging(Owner,TokenID: Int64; const Symbol: string;
       BuyAmount,PayAmount,Ratio,Commission1,Commission2: Extended);
-    procedure SendResponseBalance(RLC,GTN: Extended);
     procedure SendRequestCreateOffer(Direction: Integer; const Symbol1,Symbol2: string;
       Amount,Ratio: Extended; EndDate: TDateTime);
     procedure SendRequestOffers(const Symbol1,Symbol2: string);
@@ -314,24 +313,26 @@ begin
 
 end;
 
+// on owner RLC and GTN tokens node
+
 procedure TCloudCore.OnRequestForging(const Forging: TCloudRequestForging);
 var R: string;
 begin
 
-  R:='0';
+  R:='0'; // failed
 
   try
 
     AppCore.DoForging(Forging.Owner,Forging.Buyer,Forging.BuyToken,Forging.BuyAmount,
       Forging.Commission1,Forging.Commission2);
 
-    R:='1';
+    R:='1'; // success
 
   except on E: Exception do
     ToLog('Exception: '+E.Message);
   end;
 
-  Client.SendResponseForging(Forging.Request,R);
+  Client.SendResponseForging(Forging.Request,R); // response to cloud
 
 end;
 
@@ -354,10 +355,17 @@ begin
 
 end;
 
+// on cloud node
+
 procedure TCloudCore.OnRequestAccountBalance(const AccountBalance: TCloudRequestAccountBalance);
+var AmountRLC,AmountGTN: Extended;
 begin
-  AppCore.DoCloudResponseBalance;
-  Dequeue;
+
+  AmountRLC:=AppCore.GetSymbolBalance('RLC');
+  AmountGTN:=AppCore.GetSymbolBalance('GTN');
+
+  Client.SendResponseAccountBalance(AmountRLC,AmountGTN); // response to cloud
+
 end;
 
 procedure TCloudCore.OnCreateOffer(const Offer: TCloudResponseCreateOffer);
@@ -441,6 +449,8 @@ begin
   for var V in Values do if SameText(S,V) then Exit(True);
 end;
 
+// on cloud node
+
 procedure TCloudCore.OnRequestTransfer(const Transfer: TCloudRequestTransfer);
 var Symbol: string;
 begin
@@ -460,12 +470,14 @@ begin
 
   else try
 
+    // blockchain transfer
+
     AppCore.DoTransferToken2(SymbolBy(Transfer.SymbolID),Transfer.ToAccountID.ToString,Transfer.Amount);
 
-    Client.SendResponseTransfer;
+    Client.SendResponseTransfer; // success response to cloud
 
   except on E: Exception do
-    Client.SendResponseError(781,E.Message);
+    Client.SendResponseError(781,E.Message); // any transfer exception
   end;
 
 end;
@@ -796,11 +808,6 @@ begin
 
 end;
 
-procedure TCloudCore.SendResponseBalance(RLC,GTN: Extended);
-begin
-  Client.SendResponseAccountBalance(AmountToStrI(RLC)+' '+AmountToStrI(GTN));
-end;
-
 procedure TCloudCore.SendRequestCreateOffer(Direction: Integer; const Symbol1,Symbol2: string;
   Amount,Ratio: Extended; EndDate: TDateTime);
 begin
@@ -889,7 +896,7 @@ begin
   Enqueue('SendRequestKillOffer',procedure
   begin
 
-  ToLog('Execute request offers list');
+  ToLog('Execute request kill offer id='+OfferID.ToString);
 
   UI.WaitLock;
 

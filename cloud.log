@@ -91,3 +91,45 @@
 [27.04.2020 00:41:32.635] Execute login
 [27.04.2020 00:41:32.643] CheckPW U338 hoome@users.dev ****** ipa
 [27.04.2020 00:41:32.687] _StartClient U338 ipavd8hMc4Fsrk1u1KArfCcoMnVH304DA0 1 6 
+[27.04.2020 04:27:15.220] Add procedure SendRequestLogin to queue[0]
+[27.04.2020 04:27:15.227] Execute login
+[27.04.2020 04:27:15.233] connecting... to 185.27.192.156:8765
+[27.04.2020 04:27:15.395] client connected
+[27.04.2020 04:27:15.455] c2 U341 *
+[27.04.2020 04:27:15.469] CheckPW U341 hoome@users.dev ****** ipa
+[27.04.2020 04:27:15.600] _StartClient U341 ipaymPN25R6aPbNFrUrx5b4ps9XRmPBDjr 1 6 
+[27.04.2020 04:27:44.372] Add procedure SendRequestLogin to queue[0]
+[27.04.2020 04:27:44.379] Execute login
+[27.04.2020 04:27:44.386] connecting... to localhost:8765
+[27.04.2020 04:27:44.509] client connected
+[27.04.2020 04:27:44.516] c2 U1 *
+[27.04.2020 04:27:44.522] CheckPW U1 hoome@users.dev ****** ipa
+[27.04.2020 04:27:44.528] _StartClient U1 *
+[27.04.2020 04:27:54.835] GeyAccountBalance U1 
+[27.04.2020 04:27:54.842] 0:unknown response
+[27.04.2020 04:27:54.847] error:unknown response
+[27.04.2020 04:28:01.716] GetAccountBalance U1 
+[27.04.2020 04:28:01.722] _GetAccountBalance U1 * 100.00 0.00
+[27.04.2020 04:28:38.703] Add procedure SendRequestLogin to queue[0]
+[27.04.2020 04:28:38.709] Execute login
+[27.04.2020 04:28:38.715] connecting... to localhost:8765
+[27.04.2020 04:28:38.851] client connected
+[27.04.2020 04:28:38.858] c2 U2 *
+[27.04.2020 04:28:38.864] CheckPW U2 hoome@users.dev ****** ipa
+[27.04.2020 04:28:38.871] _StartClient U2 *
+[27.04.2020 04:28:43.778] GetAccountBalance U2 
+[27.04.2020 04:28:43.786] _GetAccountBalance U2 * 100.00 100.00
+[27.04.2020 04:28:54.076] Add procedure SendRequestLogin to queue[0]
+[27.04.2020 04:28:54.083] Execute login
+[27.04.2020 04:28:54.089] connecting... to localhost:8765
+[27.04.2020 04:28:54.214] client connected
+[27.04.2020 04:28:54.222] c2 U3 *
+[27.04.2020 04:28:54.228] CheckPW U3 hoome@users.dev ****** ipa
+[27.04.2020 04:28:54.235] _StartClient U3 *
+[27.04.2020 04:28:55.810] GetAccountBalance U3 
+[27.04.2020 04:28:55.819] _GetAccountBalance U3 * 100.00 76.00
+[27.04.2020 04:28:57.658] GetAccountBalance U3 
+[27.04.2020 04:28:57.664] _GetAccountBalance U3 * 100.00 76.00
+[27.04.2020 04:28:58.099] GetAccountBalance U3 
+[27.04.2020 04:28:58.106] _GetAccountBalance U3 * 100.00 76.00
+[27.04.2020 04:29:15.131] connection closed
