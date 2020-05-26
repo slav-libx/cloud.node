@@ -17,6 +17,7 @@ function SymbolID(const Symbol: string; const Default: Integer=0): Integer;
 function SymbolBy(SymbolID: Integer; const Default: string=''): string;
 function Skip(const S: string; const SkipChars: array of Char; Count: Integer): string;
 function Map(const Value: string; const A,B: TArray<string>; const Default: string=''): string;
+function ArrayToString(const A: TArray<Int64>; const Separator: string): string;
 
 implementation
 
@@ -90,6 +91,16 @@ begin
     Inc(P);
   end;
   Result:=S.Substring(P);
+end;
+
+function ArrayToString(const A: TArray<Int64>; const Separator: string): string;
+begin
+  Result:='';
+  for var V in A do
+  if Result='' then
+    Result:=string.Join('',[Result,V])
+  else
+    Result:=string.Join(Separator,[Result,V]);
 end;
 
 initialization

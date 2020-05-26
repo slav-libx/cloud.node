@@ -10,7 +10,8 @@ uses
   Net.Socket in '..\relictum.node\Library\Net.Socket.pas',
   Cloud.Types in 'Cloud\Cloud.Types.pas',
   Cloud.Utils in 'Cloud\Cloud.Utils.pas',
-  Cloud.Consts in 'Cloud\Cloud.Consts.pas';
+  Cloud.Consts in 'Cloud\Cloud.Consts.pas',
+  Lib.Timer in '..\relictum.node\Library\Lib.Timer.pas';
 
 begin
   TCloudServer.Create(8765).Run;

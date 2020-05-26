@@ -72,11 +72,15 @@ type
     procedure SendRequestOfferAccount;
     procedure SendResponseTransfer;
     procedure SendResponseError(Code: Integer; const Text: string='');
-    procedure SendRequestKillOffer(OfferID: Int64);
+    procedure SendRequestKillOffers(const Offers: TArray<Int64>);
     procedure SendRequestActiveOffers;
     procedure SendRequestClosedOffers(BeginDate,EndDate: TDateTime);
     procedure SendRequestHistoryOffers(BeginDate,EndDate: TDateTime);
     procedure SendRequestPairsSummary;
+    procedure SendRequestCandles(SymbolID1,SymbolID2: Integer;
+      BeginDate: TDateTime; IntervalType: Integer);
+    procedure SendRequestSetNotifications(Enabled: Boolean);
+    procedure SendRequestTradingHistory(SymbolID1,SymbolID2,Count: Integer);
     property Workloaded: Boolean read Workload;
     property Ready: Boolean read GetReady;
     property Connected: Boolean read GetConnected;
@@ -90,8 +94,8 @@ implementation
 constructor TCloudClient.Create;
 begin
 
-  Host:=CLOUD_DEFAULT_HOST;
-  Port:=CLOUD_DEFAULT_PORT;
+  Host:=CLOUD_HOST_DEVNET;
+  Port:=CLOUD_PORT_DEFAULT;
 
   Client:=TTCPSocket.Create;
 
@@ -350,7 +354,7 @@ begin
   else
 
   if Response.Command='_KillOffer' then
-    Delegate.OnKillOffer(Response)
+    Delegate.OnKillOffers(Response)
   else
 
   if Response.Command='_GetActiveOffers' then
@@ -367,6 +371,26 @@ begin
 
   if Response.Command='_GetPairsSummary' then
     Delegate.OnPairsSummary(Response)
+  else
+
+  if Response.Command='_SetNotifications' then
+    Delegate.OnSetNotifications(Response)
+  else
+
+  if Response.Command='NotifyEvent' then
+    Delegate.OnNotifyEvent(Response)
+  else
+
+  if Response.Command='_GetCandles' then
+    Delegate.OnCandles(Response)
+  else
+
+  if Response.Command='_GetCandles' then
+    Delegate.OnCandles(Response)
+  else
+
+  if Response.Command='_GetTradingHistory' then
+    Delegate.OnTradingHistory(Response)
   else
 
     Delegate.OnError('* * 0');
@@ -503,9 +527,9 @@ begin
   SendResponse('URKError',GetAccessToken+' '+Code.ToString+Join(not Text.IsEmpty,' "'+Text+'"'));
 end;
 
-procedure TCloudClient.SendRequestKillOffer(OfferID: Int64);
+procedure TCloudClient.SendRequestKillOffers(const Offers: TArray<Int64>);
 begin
-  SendRequest('KillOffer',GetAccessToken+' '+OfferID.ToString);
+  SendRequest('KillOffer',GetAccessToken+' '+ArrayToString(Offers,' '));
 end;
 
 procedure TCloudClient.SendRequestActiveOffers;
@@ -528,6 +552,25 @@ end;
 procedure TCloudClient.SendRequestPairsSummary;
 begin
   SendRequest('GetPairsSummary',GetAccessToken);
+end;
+
+procedure TCloudClient.SendRequestCandles(SymbolID1,SymbolID2: Integer;
+  BeginDate: TDateTime; IntervalType: Integer);
+begin
+  SendRequest('GetCandles',GetAccessToken+' '+DefValue(SymbolID1)+' '+DefValue(SymbolID2)+' '+
+    DateTimeToUnix(BeginDate,False).ToString+' '+IntervalType.ToString);
+end;
+
+procedure TCloudClient.SendRequestSetNotifications(Enabled: Boolean);
+const V: array[Boolean] of string=('0','1');
+begin
+  SendRequest('SetNotifications',GetAccessToken+' '+V[Enabled]);
+end;
+
+procedure TCloudClient.SendRequestTradingHistory(SymbolID1,SymbolID2,Count: Integer);
+begin
+  SendRequest('GetTradingHistory',GetAccessToken+' '+DefValue(SymbolID1)+' '+
+    DefValue(SymbolID2)+' '+Count.ToString);
 end;
 
 end.

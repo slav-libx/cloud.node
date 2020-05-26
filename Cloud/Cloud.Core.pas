@@ -26,7 +26,7 @@ type
     CloudHost: string;
     CloudPort: Word;
     KeepAlive: Boolean;
-    procedure ReadConfig;
+    procedure ReadConfig(jsConfig: TJSONObject);
   private
     Queue: array of TProc;
     procedure Enqueue(const Name: string; Proc: TProc);
@@ -70,11 +70,15 @@ type
     procedure OnOffers(const Offers: TCloudResponseOffers); override;
     procedure OnOfferAccount(const Account: TCloudResponseOfferAccount); override;
     procedure OnRequestTransfer(const Transfer: TCloudRequestTransfer); override;
-    procedure OnKillOffer(const Offer: TCloudResponseKillOffer); override;
+    procedure OnKillOffers(const Offers: TCloudResponseKillOffers); override;
     procedure OnActiveOffers(const Offers: TCloudResponseOffers); override;
     procedure OnClosedOffers(const Offers: TCloudResponseOffers); override;
     procedure OnHistoryOffers(const Offers: TCloudResponseOffers); override;
     procedure OnPairsSummary(const Pairs: TCloudResponsePairs); override;
+    procedure OnSetNotifications(const Notifications: TCloudResponseNotifications); override;
+    procedure OnNotifyEvent(const NotifyEvent: TCloudResponseNotifyEvent); override;
+    procedure OnCandles(const Candles: TCloudResponseCandles); override;
+    procedure OnTradingHistory(const Trades: TCloudResponseTrades); override;
   public
     constructor Create; overload;
     destructor Destroy; override;
@@ -83,6 +87,8 @@ type
     procedure Disconnect;
     procedure Unauthorized;
     procedure Cancel;
+    function Ready: Boolean;
+    procedure SetNetwork(const NetworkName: string; jsConfig: TJSONObject);
     procedure SetAuth(const Email,Password: string; AccountID: Int64);
     procedure SetKeepAlive(KeepAlive: Boolean; RecoveryInterval: Cardinal);
     procedure SendRequestLogin;
@@ -94,11 +100,15 @@ type
     procedure SendRequestCreateOffer(Direction: Integer; const Symbol1,Symbol2: string;
       Amount,Ratio: Extended; EndDate: TDateTime);
     procedure SendRequestOffers(const Symbol1,Symbol2: string);
-    procedure SendRequestKillOffer(OfferID: Int64);
+    procedure SendRequestKillOffers(const Offers: TArray<Int64>);
     procedure SendRequestActiveOffer;
     procedure SendRequestClosedOffer(BeginDate,EndDate: TDateTime);
     procedure SendRequestHistoryOffer(BeginDate,EndDate: TDateTime);
     procedure SendRequestPairsSummary;
+    procedure SendRequestCandles(const Symbol1,Symbol2: string; BeginDate: TDateTime;
+      IntervalType: Integer);
+    procedure SendRequestSetNotifications(Enabled: Boolean);
+    procedure SendRequestTradingHistory(const Symbol1,Symbol2: string; Count: Integer);
     property ShowEventMessages: Boolean read FShowEventMessages write FShowEventMessages;
   end;
 
@@ -109,26 +119,6 @@ begin
 
   Client:=TCloudClient.Create;
   Client.SetDelegate(Self);
-
-  {$IFDEF STAGE}
-
-  CloudHost:=CLOUD_DEFAULT_HOST;
-  CloudPort:=CLOUD_DEFAULT_PORT;
-
-  {$ELSE}
-
-  CloudHost:=CLOUD_DEFAULT_HOST;
-  CloudPort:=CLOUD_DEFAULT_PORT;
-
-  {$ENDIF}
-
-  KeepAlive:=False;
-
-  OfferAccount:=0;
-
-  ReadConfig;
-
-  Client.SetEndPoint(CloudHost,CloudPort);
 
   DoErrorProcDefault:=procedure(const Error: TCloudResponseError)
   begin
@@ -148,18 +138,14 @@ begin
   inherited;
 end;
 
-procedure TCloudCore.ReadConfig;
-var jsObject,jsCloud: TJSONObject;
+procedure TCloudCore.ReadConfig(jsConfig: TJSONObject);
+var jsCloud: TJSONObject;
 begin
 
-  if TFile.Exists('.config.json') then
+  if Assigned(jsConfig) then
   begin
 
-    jsObject:=TJSONObject.ParseJSONValue(TFile.ReadAllText('.config.json')) as TJSONObject;
-
-    if not Assigned(jsObject) then raise Exception.Create('config read error');
-
-    jsCloud:=jsObject.GetValue<TJSONObject>('cloud',nil);
+    jsCloud:=jsConfig.GetValue<TJSONObject>('cloud',nil);
 
     if Assigned(jsCloud) then
     begin
@@ -167,8 +153,6 @@ begin
       CloudPort:=jsCloud.GetValue<Word>('port');
       KeepAlive:=jsCloud.GetValue<Boolean>('keepalive',False);
     end;
-
-    jsObject.Free;
 
   end;
 
@@ -204,7 +188,8 @@ end;
 procedure TCloudCore.Dequeue;
 begin
   Delete(Queue,0,1);
-  if Length(Queue)>0 then Queue[0]();
+  if Length(Queue)>0 then Queue[0]() else
+  DoBeginProc:=nil;
 end;
 
 procedure TCloudCore.DoExcept(const Text: string);
@@ -267,6 +252,7 @@ end;
 
 procedure TCloudCore.OnLogin(const Login: TCloudResponseLogin);
 begin
+  AppCore.DoCloudLogin;
   ExecuteBeginProc;
 end;
 
@@ -371,19 +357,13 @@ end;
 procedure TCloudCore.OnCreateOffer(const Offer: TCloudResponseCreateOffer);
 begin
 
-  if Offer.OfferID='' then
-    DoExcept('error')
-  else begin
+  UI.WaitCancel;
 
-    UI.WaitCancel;
+  AppCore.DoCloudCreateOffer(Offer.OfferID);
 
-    AppCore.DoCloudCreateOffer(Offer.OfferID);
+  UI.WaitUnlock;
 
-    UI.WaitUnlock;
-
-    Dequeue;
-
-  end;
+  Dequeue;
 
 end;
 
@@ -393,8 +373,8 @@ begin
   Result.ID:=Offer.ID;
   Result.AccountID:=Offer.AccountID;
   Result.Direction:=Offer.Direction;
-  Result.Symbol1:=SymbolBy(Offer.Coin1);
-  Result.Symbol2:=SymbolBy(Offer.Coin2);
+  Result.Symbol1:=SymbolBy(Offer.SymbolID1);
+  Result.Symbol2:=SymbolBy(Offer.SymbolID2);
   Result.Ratio:=Offer.Ratio;
   Result.StrtAmount:=Offer.StrtAmount;
   Result.CrrntAmount:=Offer.CrrntAmount;
@@ -411,12 +391,21 @@ end;
 
 function CloudPairToPair(const Pair: TCloudPair): TPair;
 begin
-  Result.Symbol1:=SymbolBy(Pair.Coin1);
-  Result.Symbol2:=SymbolBy(Pair.Coin2);
+
+  Result.Symbol1:=SymbolBy(Pair.SymbolID1);
+  Result.Symbol2:=SymbolBy(Pair.SymbolID2);
   Result.Ratio:=Pair.Ratio;
   Result.Volume:=Pair.Volume;
   Result.LastDate:=Pair.LastDate;
   Result.Ratio24hAgo:=Pair.Ratio24hAgo;
+  Result.Low:=Pair.Low;
+  Result.High:=Pair.High;
+
+  if Result.Ratio24hAgo>0 then
+    Result.Percent:=100*(Result.Ratio/Result.Ratio24hAgo-1)
+  else
+    Result.Percent:=0;
+
 end;
 
 function CloudPairsToPairs(const Pairs: TCloudPairs): TPairs;
@@ -482,22 +471,16 @@ begin
 
 end;
 
-procedure TCloudCore.OnKillOffer(const Offer: TCloudResponseKillOffer);
+procedure TCloudCore.OnKillOffers(const Offers: TCloudResponseKillOffers);
 begin
 
-  if Offer.OfferID='' then
-    DoExcept('error')
-  else begin
+  UI.WaitCancel;
 
-    UI.WaitCancel;
+  AppCore.DoCloudKillOffers(Offers.Offers);
 
-    AppCore.DoCloudKillOffer(Offer.OfferID);
+  UI.WaitUnlock;
 
-    UI.WaitUnlock;
-
-    Dequeue;
-
-  end;
+  Dequeue;
 
 end;
 
@@ -553,6 +536,80 @@ begin
 
 end;
 
+procedure TCloudCore.OnSetNotifications(const Notifications: TCloudResponseNotifications);
+begin
+
+  AppCore.DoCloudSetNotifications(Notifications.Enabled);
+
+  Dequeue;
+
+end;
+
+procedure TCloudCore.OnNotifyEvent(const NotifyEvent: TCloudResponseNotifyEvent);
+begin
+
+  AppCore.DoCloudNotifyEvent(SymbolBy(NotifyEvent.SymbolID1),SymbolBy(NotifyEvent.SymbolID2),
+    NotifyEvent.EventCode);
+
+  Dequeue;
+
+end;
+
+function CloudCandleToCandle(const Candle: TCloudCandle): TDataCandle;
+begin
+  Result.DateTime:=Candle.DateTime;
+  Result.Time:=Candle.UnixTime;
+  Result.Open:=Candle.Open;
+  Result.Close:=Candle.Close;
+  Result.Min:=Candle.Min;
+  Result.Max:=Candle.Max;
+  Result.Volume:=Candle.Volume;
+end;
+
+function CloudCandlesToCandles(const Candles: TCloudCandles): TDataCandles;
+begin
+  Result:=nil;
+  for var Candle in Candles do Result:=Result+[CloudCandleToCandle(Candle)];
+end;
+
+procedure TCloudCore.OnCandles(const Candles: TCloudResponseCandles);
+begin
+
+  UI.WaitCancel;
+
+  AppCore.DoCloudCandles(SymbolBy(Candles.SymbolID1),SymbolBy(Candles.SymbolID2),
+    Candles.IntervalCode,CloudCandlesToCandles(Candles.Candles));
+
+  UI.WaitUnlock;
+
+  Dequeue;
+
+end;
+
+function CloudTradeToTrade(const Trade: TCloudTrade): TDataTrade;
+begin
+  Result.Direction:=Trade.Direction;
+  Result.Volume:=Trade.Volume;
+  Result.Ratio:=Trade.Ratio;
+  Result.Date:=Trade.Date;
+end;
+
+function CloudTradesToTrades(const Trades: TCloudTrades): TDataTrades;
+begin
+  Result:=nil;
+  for var Trade in Trades do Result:=Result+[CloudTradeToTrade(Trade)];
+end;
+
+procedure TCloudCore.OnTradingHistory(const Trades: TCloudResponseTrades);
+begin
+
+  AppCore.DoCloudTradingHistory(SymbolBy(Trades.SymbolID1),SymbolBy(Trades.SymbolID2),
+    CloudTradesToTrades(Trades.Trades));
+
+  Dequeue;
+
+end;
+
 procedure TCloudCore.Connect;
 begin
 
@@ -583,9 +640,44 @@ begin
   Client.Cancel;
 end;
 
+function TCloudCore.Ready: Boolean;
+begin
+  Result:=Client.Ready;
+end;
+
 procedure TCloudCore.ExecuteBeginProc;
 begin
   if Assigned(DoBeginProc) then DoBeginProc;
+end;
+
+procedure TCloudCore.SetNetwork(const NetworkName: string; jsConfig: TJSONObject);
+begin
+
+  {$IFDEF STAGE}
+
+  if NetworkName='mainnet' then
+    CloudHost:=CLOUD_HOST_MAINNET
+  else
+    CloudHost:=CLOUD_HOST_TESTNET;
+
+  {$ELSE}
+
+  CloudHost:=CLOUD_HOST_DEVNET;
+
+  {$ENDIF}
+
+  CloudPort:=CLOUD_PORT_DEFAULT;
+
+  KeepAlive:=False;
+
+  OfferAccount:=0;
+
+  ReadConfig(jsConfig);
+
+  Client.SetEndPoint(CloudHost,CloudPort);
+
+  SetAuth('','',0);
+
 end;
 
 procedure TCloudCore.SetAuth(const Email,Password: string; AccountID: Int64);
@@ -890,13 +982,13 @@ begin
 
 end;
 
-procedure TCloudCore.SendRequestKillOffer(OfferID: Int64);
+procedure TCloudCore.SendRequestKillOffers(const Offers: TArray<Int64>);
 begin
 
   Enqueue('SendRequestKillOffer',procedure
   begin
 
-  ToLog('Execute request kill offer id='+OfferID.ToString);
+//  ToLog('Execute request kill offer id='+Cloud.Utils.ToString(Offers,', '));
 
   UI.WaitLock;
 
@@ -906,7 +998,7 @@ begin
 
   DoBeginProc:=procedure
   begin
-    Client.SendRequestKillOffer(OfferID);
+    Client.SendRequestKillOffers(Offers);
   end;
 
   DoConnection;
@@ -1007,6 +1099,78 @@ begin
   DoBeginProc:=procedure
   begin
     Client.SendRequestPairsSummary;
+  end;
+
+  DoConnection;
+
+  end);
+
+end;
+
+procedure TCloudCore.SendRequestCandles(const Symbol1,Symbol2: string;
+  BeginDate: TDateTime; IntervalType: Integer);
+begin
+
+  Enqueue('SendRequestCandles',procedure
+  begin
+
+  ToLog('Execute request candles data '+Symbol1+'/'+Symbol2);
+
+  UI.WaitLock;
+
+  DoConnectProc:=DoLoginProc;
+
+  DoErrorProc:=DoErrorProcDefault;
+
+  DoBeginProc:=procedure
+  begin
+    Client.SendRequestCandles(SymbolID(Symbol1),SymbolID(Symbol2),BeginDate,IntervalType);
+  end;
+
+  DoConnection;
+
+  end);
+
+end;
+
+procedure TCloudCore.SendRequestSetNotifications(Enabled: Boolean);
+begin
+
+  Enqueue('SendRequestSetNotifications',procedure
+  begin
+
+  ToLog('Execute request set notifications');
+
+  DoConnectProc:=DoLoginProc;
+
+  DoErrorProc:=DoErrorProcDefault;
+
+  DoBeginProc:=procedure
+  begin
+    Client.SendRequestSetNotifications(Enabled);
+  end;
+
+  DoConnection;
+
+  end);
+
+end;
+
+procedure TCloudCore.SendRequestTradingHistory(const Symbol1,Symbol2: string; Count: Integer);
+begin
+
+  Enqueue('SendRequestTradingHistory',procedure
+  begin
+
+  ToLog('Execute request trading history');
+
+  DoConnectProc:=DoLoginProc;
+
+  DoErrorProc:=DoErrorProcDefault;
+
+  DoBeginProc:=procedure
+  begin
+    Client.SendRequestTradingHistory(SymbolID(Symbol1),SymbolID(Symbol2),Count);
   end;
 
   DoConnection;

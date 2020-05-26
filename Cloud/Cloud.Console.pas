@@ -32,7 +32,7 @@ type
     procedure OnCreateOffer(const Offer: TCloudResponseCreateOffer); override;
     procedure OnOffers(const Offers: TCloudResponseOffers); override;
     procedure OnOfferAccount(const Account: TCloudResponseOfferAccount); override;
-    procedure OnKillOffer(const Offer: TCloudResponseKillOffer); override;
+    procedure OnKillOffers(const Offers: TCloudResponseKillOffers); override;
     procedure OnActiveOffers(const Offers: TCloudResponseOffers); override;
     procedure OnClosedOffers(const Offers: TCloudResponseOffers); override;
     procedure OnHistoryOffers(const Offers: TCloudResponseOffers); override;
@@ -154,9 +154,9 @@ begin
   Writeln('offer account='+Account.AccountID.ToString);
 end;
 
-procedure TCloudConsole.OnKillOffer(const Offer: TCloudResponseKillOffer);
+procedure TCloudConsole.OnKillOffers(const Offers: TCloudResponseKillOffers);
 begin
-  Writeln(string(Offer));
+  Writeln(string(Offers));
 end;
 
 procedure TCloudConsole.OnActiveOffers(const Offers: TCloudResponseOffers);

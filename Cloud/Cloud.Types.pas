@@ -156,7 +156,7 @@ type
   end;
 
   TCloudResponseCreateOffer = record
-    OfferID: string;
+    OfferID: Int64;
     class operator Implicit(const S: string): TCloudResponseCreateOffer;
     class operator Implicit(const Response: TCloudResponse): TCloudResponseCreateOffer;
   end;
@@ -167,8 +167,8 @@ type
     ID: Integer;
     AccountID: Int64;
     Direction: Integer;
-    Coin1: Integer;
-    Coin2: Integer;
+    SymbolID1: Integer;
+    SymbolID2: Integer;
     Ratio: Extended;
     StrtAmount: Extended;
     CrrntAmount: Extended;
@@ -201,20 +201,21 @@ type
     class operator Implicit(const Request: TCloudRequest): TCloudRequestTransfer;
   end;
 
-  TCloudResponseKillOffer = record
-    OfferID: string;
-    class operator Implicit(const S: string): TCloudResponseKillOffer;
-    class operator Implicit(const Response: TCloudResponse): TCloudResponseKillOffer;
+  TCloudResponseKillOffers = record
+    Offers: TArray<Int64>;
+    class operator Implicit(const S: string): TCloudResponseKillOffers;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseKillOffers;
   end;
 
   TCloudPair = record
-  public
-    Coin1: Integer;
-    Coin2: Integer;
+    SymbolID1: Integer;
+    SymbolID2: Integer;
     Ratio: Extended;
     Volume: Extended;
     LastDate: TDateTime;
     Ratio24hAgo: Extended;
+    Low: Extended;
+    High: Extended;
     class operator Implicit(const S: string): TCloudPair;
     class operator Implicit(const Pair: TCloudPair): string;
   end;
@@ -225,6 +226,60 @@ type
     Pairs: TCloudPairs;
     class operator Implicit(const S: string): TCloudResponsePairs;
     class operator Implicit(const Response: TCloudResponse): TCloudResponsePairs;
+  end;
+
+  TCloudResponseNotifications = record
+    Enabled: Boolean;
+    class operator Implicit(const S: string): TCloudResponseNotifications;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseNotifications;
+  end;
+
+  TCloudResponseNotifyEvent  = record
+    EventCode: Integer;
+    SymbolID1: Integer;
+    SymbolID2: Integer;
+    class operator Implicit(const S: string): TCloudResponseNotifyEvent;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseNotifyEvent;
+  end;
+
+  TCloudCandle = record
+    UnixTime: Int64;
+    DateTime: TDateTime;
+    Open: Extended;
+    Close: Extended;
+    Min: Extended;
+    Max: Extended;
+    Volume: Extended;
+    class operator Implicit(const S: string): TCloudCandle;
+  end;
+
+  TCloudCandles = array of TCloudCandle;
+
+  TCloudResponseCandles = record
+    SymbolID1: Integer;
+    SymbolID2: Integer;
+    IntervalCode: Integer;
+    Candles: TCloudCandles;
+    class operator Implicit(const S: string): TCloudResponseCandles;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseCandles;
+  end;
+
+  TCloudTrade = record
+    Direction: Integer;
+    Volume: Extended;
+    Ratio: Extended;
+    Date: TDateTime;
+    class operator Implicit(const S: string): TCloudTrade;
+  end;
+
+  TCloudTrades = array of TCloudTrade;
+
+  TCloudResponseTrades = record
+    SymbolID1: Integer;
+    SymbolID2: Integer;
+    Trades: TCloudTrades;
+    class operator Implicit(const S: string): TCloudResponseTrades;
+    class operator Implicit(const Response: TCloudResponse): TCloudResponseTrades;
   end;
 
   TCloudDelegate = class abstract
@@ -247,11 +302,15 @@ type
     procedure OnOffers(const Offers: TCloudResponseOffers); virtual; abstract;
     procedure OnOfferAccount(const Account: TCloudResponseOfferAccount); virtual; abstract;
     procedure OnRequestTransfer(const Transfer: TCloudRequestTransfer); virtual; abstract;
-    procedure OnKillOffer(const Offer: TCloudResponseKillOffer); virtual; abstract;
+    procedure OnKillOffers(const Offers: TCloudResponseKillOffers); virtual; abstract;
     procedure OnActiveOffers(const Offers: TCloudResponseOffers); virtual; abstract;
     procedure OnClosedOffers(const Offers: TCloudResponseOffers); virtual; abstract;
     procedure OnHistoryOffers(const Offers: TCloudResponseOffers); virtual; abstract;
     procedure OnPairsSummary(const Pairs: TCloudResponsePairs); virtual; abstract;
+    procedure OnSetNotifications(const Notifications: TCloudResponseNotifications); virtual; abstract;
+    procedure OnNotifyEvent(const NotifyEvent: TCloudResponseNotifyEvent); virtual; abstract;
+    procedure OnCandles(const Candles: TCloudResponseCandles); virtual; abstract;
+    procedure OnTradingHistory(const Trades: TCloudResponseTrades); virtual; abstract;
   end;
 
 implementation
@@ -335,6 +394,8 @@ begin
   if Code='1113' then Exit('wrong date');
   if Code='1209' then Exit('unknown offer');
   if Code='1210' then Exit('offer killed');
+
+  if Code='1404' then Exit('forbidden value');
 
   Result:='';
 
@@ -767,20 +828,16 @@ end;
 { TCloudResponseCreateOffer }
 
 class operator TCloudResponseCreateOffer.Implicit(const S: string): TCloudResponseCreateOffer;
-var
-  Args: TArray<string>;
-  L: Integer;
+var Args: TArray<string>;
 begin
 
   // U14 * 3
 
   Args:=S.Split([' ']);
 
-  L:=Length(Args);
+  Result:=Default(TCloudResponseCreateOffer);
 
-  Result.OfferID:='';
-
-  if L>2 then Result.OfferID:=Args[2];
+  if Length(Args)>2 then Result.OfferID:=StrToInt64Def(Args[2],0);
 
 end;
 
@@ -808,8 +865,8 @@ begin
     Result.ID:=StrToIntDef(Args[1],0);
     Result.AccountID:=StrToInt64Def(Args[2],0);
     Result.Direction:=StrToIntDef(Args[3],0);
-    Result.Coin1:=StrToIntDef(Args[4],0);
-    Result.Coin2:=StrToIntDef(Args[5],0);
+    Result.SymbolID1:=StrToIntDef(Args[4],0);
+    Result.SymbolID2:=StrToIntDef(Args[5],0);
     Result.Ratio:=StrToAmountDef(Args[6],0);
     Result.StrtAmount:=StrToAmountDef(Args[7],0);
     Result.CrrntAmount:=StrToAmountDef(Args[8],0);
@@ -824,7 +881,7 @@ end;
 class operator TCloudOffer.Implicit(const Offer: TCloudOffer): string;
 begin
   Result:=Offer.ID.ToString+' '+Offer.AccountID.ToString+' '+Offer.Direction.ToString+' '+
-    SymbolBy(Offer.Coin1)+'/'+SymbolBy(Offer.Coin2)+' '+AmountToStr(Offer.CrrntAmount)+' '+
+    SymbolBy(Offer.SymbolID1)+'/'+SymbolBy(Offer.SymbolID2)+' '+AmountToStr(Offer.CrrntAmount)+' '+
     AmountToStr(Offer.Ratio)+' '+DateTimeToStr(Offer.StartDate);
 end;
 
@@ -834,7 +891,6 @@ class operator TCloudResponseOffers.Implicit(const S: string): TCloudResponseOff
 var
   Args: TArray<string>;
   I: Integer;
-  Offer: TCloudOffer;
 begin
 
   // U27 ipau069YVae2fPvNg5rblYug310uKyFsiJ <offer_1> <offer_2> ...
@@ -901,25 +957,24 @@ end;
 
 { TCloudResponseKillOffer }
 
-class operator TCloudResponseKillOffer.Implicit(const S: string): TCloudResponseKillOffer;
+class operator TCloudResponseKillOffers.Implicit(const S: string): TCloudResponseKillOffers;
 var
   Args: TArray<string>;
-  L: Integer;
+  I: Integer;
+  V: Int64;
 begin
 
-  // U14 * 3
+  // U14 * 3 7 14 15 16 29
 
   Args:=S.Split([' ']);
 
-  L:=Length(Args);
+  Result:=Default(TCloudResponseKillOffers);
 
-  Result.OfferID:='';
-
-  if L>2 then Result.OfferID:=Args[2];
+  for I:=2 to High(Args) do if TryStrToInt64(Args[I],V) then Result.Offers:=Result.Offers+[V];
 
 end;
 
-class operator TCloudResponseKillOffer.Implicit(const Response: TCloudResponse): TCloudResponseKillOffer;
+class operator TCloudResponseKillOffers.Implicit(const Response: TCloudResponse): TCloudResponseKillOffers;
 begin
   Result:=Response.Args;
 end;
@@ -930,7 +985,8 @@ class operator TCloudPair.Implicit(const S: string): TCloudPair;
 var Args: TArray<string>;
 begin
 
-  // 4 1 0,00292 298 14 1587796136 0 0 14 14
+  // 4 1 0,00292 298 14 1587796136 0 0 14 14 0 0
+  // 4 1 0,00105 1 1 1588805632 0,00105 1 10000000000 0
 
   Args:=S.Split([' ']);
 
@@ -939,12 +995,14 @@ begin
   if Length(Args)>4 then
   begin
 
-    Result.Coin1:=StrToIntDef(Args[0],0);
-    Result.Coin2:=StrToIntDef(Args[1],0);
+    Result.SymbolID1:=StrToIntDef(Args[0],0);
+    Result.SymbolID2:=StrToIntDef(Args[1],0);
     Result.Ratio:=StrToAmountDef(Args[2],0);
     Result.Volume:=StrToAmountDef(Args[3],0);
     Result.LastDate:=UnixToDateTime(StrToInt64Def(Args[5],0),False); // False - UTC date to local
     Result.Ratio24hAgo:=StrToAmountDef(Args[6],0);
+    Result.Low:=StrToAmountDef(Args[8],0);
+    Result.High:=StrToAmountDef(Args[9],0);
 
   end;
 
@@ -952,7 +1010,7 @@ end;
 
 class operator TCloudPair.Implicit(const Pair: TCloudPair): string;
 begin
-  Result:=SymbolBy(Pair.Coin1)+'/'+SymbolBy(Pair.Coin2)+' '+AmountToStr(Pair.Volume)+' '+
+  Result:=SymbolBy(Pair.SymbolID1)+'/'+SymbolBy(Pair.SymbolID2)+' '+AmountToStr(Pair.Volume)+' '+
     AmountToStr(Pair.Ratio)+' '+AmountToStr(Pair.Ratio24hAgo)+' '+DateTimeToStr(Pair.LastDate);
 end;
 
@@ -964,7 +1022,7 @@ var
   I: Integer;
 begin
 
-  // 'U3 * <pair>..<pair>'
+  // U3 * <pair>..<pair>
 
   Args:=S.Split([' '],'<','>');
 
@@ -975,6 +1033,153 @@ begin
 end;
 
 class operator TCloudResponsePairs.Implicit(const Response: TCloudResponse): TCloudResponsePairs;
+begin
+  Result:=Response.Args;
+end;
+
+{ TCloudResponseNotifications }
+
+class operator TCloudResponseNotifications.Implicit(const S: string): TCloudResponseNotifications;
+var Args: TArray<string>;
+begin
+
+  // U7 * 1
+
+  Args:=S.Split([' ']);
+
+  Result.Enabled:=Args[2]='1';
+
+end;
+
+class operator TCloudResponseNotifications.Implicit(const Response: TCloudResponse): TCloudResponseNotifications;
+begin
+  Result:=Response.Args;
+end;
+
+{ TCloudResponseNotifyEvent }
+
+class operator TCloudResponseNotifyEvent.Implicit(const S: string): TCloudResponseNotifyEvent;
+var Args: TArray<string>;
+begin
+
+  // U29 * 2 4 1
+
+  Args:=S.Split([' ']);
+
+  Result:=Default(TCloudResponseNotifyEvent);
+
+  Result.EventCode:=StrToIntDef(Args[2],-1);
+
+  if Length(Args)>3 then
+  begin
+    Result.SymbolID1:=StrToIntDef(Args[3],0);
+    Result.SymbolID2:=StrToIntDef(Args[4],0);
+  end;
+
+end;
+
+class operator TCloudResponseNotifyEvent.Implicit(const Response: TCloudResponse): TCloudResponseNotifyEvent;
+begin
+  Result:=Response.Args;
+end;
+
+{ TCloudCandle }
+
+class operator TCloudCandle.Implicit(const S: string): TCloudCandle;
+var Args: TArray<string>;
+begin
+
+  // 1588275540 0.0343 0.0356 0.0333 0.041 2.4323
+
+  Args:=S.Split([' ']);
+
+  Result:=Default(TCloudCandle);
+
+  if Length(Args)>5 then
+  begin
+    Result.UnixTime:=StrToIntDef(Args[0],0);
+    Result.DateTime:=UnixToDateTime(Result.UnixTime,False); // False - UTC date to local
+    Result.Open:=StrToAmountDef(Args[1],0);
+    Result.Close:=StrToAmountDef(Args[2],0);
+    Result.Min:=StrToAmountDef(Args[3],0);
+    Result.Max:=StrToAmountDef(Args[4],0);
+    Result.Volume:=StrToAmountDef(Args[5],0);
+  end;
+
+end;
+
+{ TCloudResponseCandles }
+
+class operator TCloudResponseCandles.Implicit(const S: string): TCloudResponseCandles;
+var
+  Args: TArray<string>;
+  I: Integer;
+begin
+
+  // U2 * 4 1 1 <...> <...> <...>
+
+  Args:=S.Split([' '],'<','>');
+
+  Result:=Default(TCloudResponseCandles);
+
+  Result.SymbolID1:=StrToIntDef(Args[2],0);
+  Result.SymbolID2:=StrToIntDef(Args[3],0);
+  Result.IntervalCode:=StrToIntDef(Args[4],0);
+
+  for I:=5 to High(Args) do if Args[I]<>'' then
+  Result.Candles:=Result.Candles+[Args[I].Trim(['<','>'])];
+
+end;
+
+class operator TCloudResponseCandles.Implicit(const Response: TCloudResponse): TCloudResponseCandles;
+begin
+  Result:=Response.Args;
+end;
+
+{ TCloudTrade }
+
+class operator TCloudTrade.Implicit(const S: string): TCloudTrade;
+var Args: TArray<string>;
+begin
+
+  // 1 0,12 0,0059 1588460356
+
+  Args:=S.Split([' ']);
+
+  Result:=Default(TCloudTrade);
+
+  if Length(Args)>3 then
+  begin
+    Result.Direction:=StrToIntDef(Args[0],0);
+    Result.Volume:=StrToAmountDef(Args[1],0);
+    Result.Ratio:=StrToAmountDef(Args[2],0);
+    Result.Date:=UnixToDateTime(StrToInt64Def(Args[3],0),False); // False - UTC date to local
+  end;
+
+end;
+
+{ TCloudResponseTrades }
+
+class operator TCloudResponseTrades.Implicit(const S: string): TCloudResponseTrades;
+var
+  Args: TArray<string>;
+  I: Integer;
+begin
+
+  // U3 * 4 1 <pair>..<pair>
+
+  Args:=S.Split([' '],'<','>');
+
+  Result:=Default(TCloudResponseTrades);
+
+  Result.SymbolID1:=StrToIntDef(Args[2],0);
+  Result.SymbolID2:=StrToIntDef(Args[3],0);
+
+  for I:=4 to High(Args) do Result.Trades:=Result.Trades+[Args[I].Trim(['<','>'])];
+
+end;
+
+class operator TCloudResponseTrades.Implicit(const Response: TCloudResponse): TCloudResponseTrades;
 begin
   Result:=Response.Args;
 end;
